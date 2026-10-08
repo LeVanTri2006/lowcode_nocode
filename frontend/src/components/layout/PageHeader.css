@@ -47,5 +47,6 @@
   }
   .page-header-right {
     justify-content: flex-start;
+    align-items: stretch;
   }
 }

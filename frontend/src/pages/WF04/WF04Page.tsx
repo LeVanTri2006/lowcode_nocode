@@ -18,6 +18,7 @@ import {
   MOCK_VIEWS_TREND,
 } from '../../mocks/performance';
 import { useToast } from '../../components/common/Toast';
+import { WorkflowExecutionStatus } from '../../components/workflow/WorkflowExecutionStatus';
 import './WF04Page.css';
 
 const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 16, className }) => (
@@ -76,7 +77,7 @@ export const WF04Page: React.FC = () => {
       avatarBg: '#2563EB',
       avatarText: 'Ve',
       date: '06/10/2026',
-      views: '845K',
+      views: '500K',
       likes: '42K',
       comments: '3.8K',
       engagement: '5.4%',
@@ -106,7 +107,7 @@ export const WF04Page: React.FC = () => {
       avatarBg: '#E11D48',
       avatarText: 'TED',
       date: '04/10/2026',
-      views: '521K',
+      views: '321K',
       likes: '14K',
       comments: '980',
       engagement: '2.8%',
@@ -130,6 +131,7 @@ export const WF04Page: React.FC = () => {
         subtitle="Đánh giá hiệu suất nội dung và so sánh đối thủ dựa trên các chỉ số tương tác, lượt xem và xu hướng."
         stepNumber={4}
       />
+      <WorkflowExecutionStatus workflowCode="WF04" />
 
       {/* FILTER BAR */}
       <div className="wf04-top-filter-bar ui-card">

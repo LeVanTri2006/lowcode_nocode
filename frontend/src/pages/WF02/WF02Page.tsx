@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_CONTENTS, type VideoContentItem } from '../../mocks/contents';
 import { useToast } from '../../components/common/Toast';
+import { WorkflowExecutionStatus } from '../../components/workflow/WorkflowExecutionStatus';
 import './WF02Page.css';
 
 export const WF02Page: React.FC = () => {
@@ -103,6 +104,7 @@ export const WF02Page: React.FC = () => {
         subtitle="Loại bỏ nội dung trùng lặp, không hợp lệ và chuẩn hóa dữ liệu video từ YouTube."
         stepNumber={2}
       />
+      <WorkflowExecutionStatus workflowCode="WF02" />
 
       {/* TOP ROW: 4 KPI CARDS */}
       <div className="wf02-kpi-grid">

@@ -23,6 +23,11 @@ const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 1
   </svg>
 );
 
+const compactToNumber = (value: string) => {
+  const number = Number.parseFloat(value);
+  return value.toUpperCase().includes('M') ? number * 1_000_000 : value.toUpperCase().includes('K') ? number * 1_000 : number;
+};
+
 export const WF08Page: React.FC = () => {
   const [forecasts] = useState<VideoForecastItem[]>(INITIAL_FORECASTS);
   const [selectedVideoId, setSelectedVideoId] = useState<number>(1);
@@ -30,13 +35,16 @@ export const WF08Page: React.FC = () => {
 
   const selectedVideo = forecasts.find((f) => f.id === selectedVideoId) || forecasts[0];
 
-  const compForecasts = [
-    { name: 'Marques Brownlee', cur: '1.2M', next: '1.8M (+50%)', curW: 60, nextW: 90 },
-    { name: 'Veritasium', cur: '850K', next: '1.3M (+53%)', curW: 42, nextW: 65 },
-    { name: 'TED', cur: '520K', next: '780K (+50%)', curW: 26, nextW: 39 },
-    { name: 'MrBeast', cur: '2.1M', next: '3.2M (+52%)', curW: 75, nextW: 100 },
-    { name: 'Others', cur: '430K', next: '680K (+58%)', curW: 22, nextW: 34 },
-  ];
+  const comparedForecasts = ['Marques Brownlee', 'Veritasium', 'TED'].flatMap((name) => {
+    const forecast = forecasts.find((item) => item.competitor === name);
+    return forecast ? [{ name, cur: forecast.currentViews, next: forecast.forecast30d, curValue: compactToNumber(forecast.currentViews), nextValue: compactToNumber(forecast.forecast30d) }] : [];
+  });
+  const maxForecastValue = Math.max(...comparedForecasts.map((item) => item.nextValue));
+  const compForecasts = comparedForecasts.map((item) => ({
+    ...item,
+    curW: Math.max(5, Math.round(item.curValue / maxForecastValue * 100)),
+    nextW: Math.max(5, Math.round(item.nextValue / maxForecastValue * 100)),
+  }));
 
   return (
     <div className="wf08-page-container fade-in">

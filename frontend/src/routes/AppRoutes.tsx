@@ -11,6 +11,7 @@ import { WF06Page } from '../pages/WF06/WF06Page';
 import { WF07Page } from '../pages/WF07/WF07Page';
 import { WF08Page } from '../pages/WF08/WF08Page';
 import { WF09Page } from '../pages/WF09/WF09Page';
+import { WF10Page } from '../pages/WF10/WF10Page';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -26,7 +27,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/wf07" element={<WF07Page />} />
         <Route path="/wf08" element={<WF08Page />} />
         <Route path="/wf09" element={<WF09Page />} />
-        <Route path="/wf10" element={<Navigate to="/" replace />} />
+        <Route path="/wf10" element={<WF10Page />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

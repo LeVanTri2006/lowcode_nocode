@@ -22,6 +22,7 @@ import {
   type CompetitorItem,
 } from '../../mocks/competitors';
 import { useToast } from '../../components/common/Toast';
+import { WorkflowExecutionStatus } from '../../components/workflow/WorkflowExecutionStatus';
 import './WF01Page.css';
 
 const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 16, className }) => (
@@ -97,11 +98,11 @@ export const WF01Page: React.FC = () => {
   const handleRunCollection = () => {
     if (isCollecting) return;
     setIsCollecting(true);
-    showToast('Đang kết nối YouTube API & bắt đầu thu thập dữ liệu...', 'info');
+    showToast('Đang mô phỏng thu thập dữ liệu từ bộ mock...', 'info');
 
     setTimeout(() => {
       setIsCollecting(false);
-      showToast('Thu thập hoàn tất! Đã cập nhật 50 video mới cho 3 đối thủ.', 'success');
+      showToast('Mô phỏng thu thập hoàn tất cho 3 đối thủ.', 'success');
     }, 2000);
   };
 
@@ -122,6 +123,7 @@ export const WF01Page: React.FC = () => {
         subtitle="Thêm, chỉnh sửa, xóa đối thủ và quản lý việc thu thập dữ liệu từ YouTube."
         stepNumber={1}
       />
+      <WorkflowExecutionStatus workflowCode="WF01" />
 
       {/* TOP ROW: Add Competitor & Collection Manager */}
       <div className="wf01-top-grid">
@@ -190,7 +192,7 @@ export const WF01Page: React.FC = () => {
           <div className="collect-info-box">
             <Info size={16} className="collect-info-icon" />
             <p className="collect-info-text">
-              WF01 sẽ lấy danh sách đối thủ từ database và thu thập dữ liệu video mới nhất từ YouTube cho tất cả đối thủ.
+              Chạy mô phỏng thu thập video mới nhất cho danh sách đối thủ mẫu.
             </p>
           </div>
 

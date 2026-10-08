@@ -90,4 +90,13 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
     description: 'Lên lịch xuất báo cáo định kỳ và gửi qua Email, Slack, Google Drive.',
     group: 'advanced',
   },
+  {
+    stepNumber: 10,
+    id: 'wf10',
+    name: 'WF10 - Bảng điều khiển tổng hợp',
+    shortName: 'Bảng tổng hợp',
+    path: '/wf10',
+    description: 'Báo cáo điều hành toàn diện, tổng hợp chỉ số, xu hướng và khuyến nghị hành động từ AI.',
+    group: 'advanced',
+  },
 ];

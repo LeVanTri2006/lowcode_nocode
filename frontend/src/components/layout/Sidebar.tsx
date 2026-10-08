@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Compass,
   FileText,
+  Layers,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -82,6 +83,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'WF09 - Báo cáo tự động',
       path: '/wf09',
       icon: FileText,
+    },
+    {
+      id: 'wf10',
+      label: 'WF10 - Bảng điều khiển tổng hợp',
+      path: '/wf10',
+      icon: Layers,
     },
   ];
 

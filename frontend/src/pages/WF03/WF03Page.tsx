@@ -20,6 +20,7 @@ import {
 import { INITIAL_CONTENTS, type VideoContentItem } from '../../mocks/contents';
 import { MOCK_AI_ANALYSES, type AiAnalysisDetail } from '../../mocks/aiAnalyses';
 import { useToast } from '../../components/common/Toast';
+import { WorkflowExecutionStatus } from '../../components/workflow/WorkflowExecutionStatus';
 import './WF03Page.css';
 
 export const WF03Page: React.FC = () => {
@@ -71,6 +72,7 @@ export const WF03Page: React.FC = () => {
         subtitle="Sử dụng AI để phân tích chủ đề, danh mục, cảm xúc và thông tin chi tiết của từng video."
         stepNumber={3}
       />
+      <WorkflowExecutionStatus workflowCode="WF03" />
 
       {/* TOP ROW: 4 KPI CARDS */}
       <div className="wf03-kpi-grid">

@@ -91,6 +91,24 @@
 
 @media (max-width: 992px) {
   .wf-stepper {
+    width: 100%;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+  .wf-stepper-track {
+    width: 100%;
+    overflow-x: auto;
+    padding: 2px 0 7px;
+    scrollbar-width: thin;
+  }
+  .wf-stepper-item {
+    flex: 0 0 58px;
+  }
+  .wf-stepper-label {
+    min-width: 52px;
+    max-width: 54px;
+  }
+  .wf-stepper-title {
     display: none;
   }
 }
