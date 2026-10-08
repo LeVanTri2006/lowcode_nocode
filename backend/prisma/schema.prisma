@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Competitor {
+  id        Int      @id @default(autoincrement())
+  name      String
+  platform  String
+  channelId String   @map("channel_id")
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  socialContents      SocialContent[]
+  performanceAnalyses PerformanceAnalysis[]
+  monitoringAlerts    MonitoringAlert[]
+
+  @@unique([platform, channelId])
+  @@map("competitors")
+}
+
+model SocialContent {
+  id           Int      @id @default(autoincrement())
+  competitorId Int      @map("competitor_id")
+  platform     String
+  contentId    String   @map("content_id")
+  title        String
+  description  String
+  url          String
+  publishedAt  DateTime @map("published_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  competitor       Competitor        @relation(fields: [competitorId], references: [id])
+  socialMetrics    SocialMetric[]
+  aiAnalysis       AiAnalysis?
+  monitoringAlerts MonitoringAlert[]
+
+  @@unique([platform, contentId])
+  @@map("social_contents")
+}
+
+model SocialMetric {
+  id              Int           @id @default(autoincrement())
+  socialContentId Int           @map("content_id")
+  views           Int           @default(0)
+  likes           Int           @default(0)
+  comments        Int           @default(0)
+  shares          Int?
+  capturedAt      DateTime      @map("captured_at")
+
+  socialContent   SocialContent @relation(fields: [socialContentId], references: [id])
+
+  @@index([socialContentId])
+  @@index([capturedAt])
+  @@map("social_metrics")
+}
+
+model AiAnalysis {
+  id             Int           @id @default(autoincrement())
+  contentId      Int           @unique @map("content_id")
+  topic          String
+  category       String
+  contentType    String        @map("content_type")
+  sentiment      String
+  keywords       Json
+  summary        String
+  targetAudience String        @map("target_audience")
+  keyMessage     String        @map("key_message")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  socialContent  SocialContent @relation(fields: [contentId], references: [id])
+
+  @@map("ai_analyses")
+}
+
+model PerformanceAnalysis {
+  id                 Int        @id @default(autoincrement())
+  competitorId       Int        @map("competitor_id")
+  platform           String
+  videoCount         Int        @map("video_count")
+  totalViews         Int        @map("total_views")
+  totalLikes         Int        @map("total_likes")
+  totalComments      Int        @map("total_comments")
+  totalEngagement    Int        @map("total_engagement")
+  averageViews       Float      @map("average_views")
+  averageLikes       Float      @map("average_likes")
+  averageComments    Float      @map("average_comments")
+  engagementRate     Float      @map("engagement_rate")
+  averageLikeRate    Float      @map("average_like_rate")
+  averageCommentRate Float      @map("average_comment_rate")
+  performanceRank    Int        @map("performance_rank")
+  createdAt          DateTime   @default(now()) @map("created_at")
+
+  competitor         Competitor @relation(fields: [competitorId], references: [id])
+
+  @@unique([competitorId, platform])
+  @@map("performance_analyses")
+}
+
+model MonitoringAlert {
+  id                 Int           @id @default(autoincrement())
+  contentId          Int           @map("content_id")
+  competitorId       Int           @map("competitor_id")
+  platform           String
+  alertType          String        @map("alert_type")
+  message            String
+  viewsChange        Int           @map("views_change")
+  likesChange        Int           @map("likes_change")
+  commentsChange     Int           @map("comments_change")
+  viewsGrowthRate    Float         @map("views_growth_rate")
+  likesGrowthRate    Float         @map("likes_growth_rate")
+  commentsGrowthRate Float         @map("comments_growth_rate")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  socialContent      SocialContent @relation(fields: [contentId], references: [id])
+  competitor         Competitor    @relation(fields: [competitorId], references: [id])
+
+  @@index([contentId])
+  @@index([competitorId])
+  @@map("monitoring_alerts")
+}
+

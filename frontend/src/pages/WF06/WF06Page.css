@@ -1,0 +1,246 @@
+.wf06-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.wf06-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.wf06-middle-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 20px;
+}
+
+.wf06-line-card,
+.wf06-donut-card,
+.wf06-fast-growth-card {
+  padding: 20px;
+}
+
+.chart-legend-row-sm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chart-legend-row-sm .legend-item {
+  font-size: 10px;
+}
+
+.legend-dot.orange {
+  background-color: #F59E0B;
+}
+
+/* Fast growth list */
+.fast-growth-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.fast-topic-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background-color: var(--bg-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.topic-thumb {
+  width: 32px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.topic-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topic-growth-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #10B981;
+}
+
+/* BOTTOM GRID */
+.wf06-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1.1fr 0.95fr;
+  gap: 20px;
+}
+
+.wf06-keywords-card,
+.wf06-cloud-card,
+.wf06-platform-card {
+  padding: 20px;
+}
+
+/* Keywords Table */
+.kw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  text-align: left;
+}
+
+.kw-table th {
+  background-color: #F8FAFC;
+  padding: 8px 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.kw-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+
+.kw-name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.growth-text {
+  color: #10B981;
+  font-weight: 700;
+}
+
+.badge-pop {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.badge-pop.cao {
+  background-color: #FEF2F2;
+  color: #EF4444;
+}
+
+.badge-pop.trung\ bình {
+  background-color: #FFFBEB;
+  color: #F59E0B;
+}
+
+.badge-pop.thấp {
+  background-color: #ECFDF5;
+  color: #10B981;
+}
+
+/* Word Cloud */
+.word-cloud-canvas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  padding: 12px 8px 16px;
+  min-height: 120px;
+}
+
+.cloud-word {
+  line-height: 1;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cloud-word:hover {
+  transform: scale(1.1);
+}
+
+.insight-bullets-box {
+  background-color: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.insight-bullets-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.insight-bullets-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Platform bars */
+.platform-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.platform-bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 30px;
+  align-items: center;
+  gap: 10px;
+}
+
+.p-bar-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.p-bar-track {
+  height: 12px;
+  background-color: #F1F5F9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.p-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.p-bar-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: right;
+}
+
+@media (max-width: 1200px) {
+  .wf06-middle-grid,
+  .wf06-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
