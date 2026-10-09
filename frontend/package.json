@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:wf04-run-ui": "node scripts/test-wf04-run-ui.mjs",
+    "test:wf04-refresh-routes": "node scripts/test-wf04-refresh-routes.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
