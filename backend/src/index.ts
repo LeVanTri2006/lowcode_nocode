@@ -15,6 +15,11 @@ import authRoutes from './routes/auth';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import { Pool } from 'pg';
+import trendRoutes from './routes/trends';
+import opportunityRoutes from './routes/opportunities';
+import riskRoutes from './routes/risks';
+import strategyRoutes from './routes/strategies';
+import reportRoutes from './routes/reports';
 
 dotenv.config();
 
@@ -51,6 +56,11 @@ app.use('/api/monitoring-data', monitoringDataRoutes);
 app.use('/api/monitoring-alerts', monitoringAlertsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/workflows', workflowRunRoutes);
+app.use('/api/trends', trendRoutes);
+app.use('/api/opportunities', opportunityRoutes);
+app.use('/api/risks', riskRoutes);
+app.use('/api/strategies', strategyRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

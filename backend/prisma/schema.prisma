@@ -124,3 +124,76 @@ model MonitoringAlert {
   @@map("monitoring_alerts")
 }
 
+model Trend {
+  id         Int      @id @default(autoincrement())
+  name       String
+  score      Float
+  growthRate Float    @map("growth_rate")
+  direction  String
+  reason     String
+  evidence   Json
+  detectedAt DateTime @default(now()) @map("detected_at")
+
+  @@map("trends")
+}
+
+model Opportunity {
+  id        Int      @id @default(autoincrement())
+  title     String
+  score     Float
+  priority  String
+  reason    String
+  evidence  Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("opportunities")
+}
+
+model Risk {
+  id        Int      @id @default(autoincrement())
+  title     String
+  score     Float
+  severity  String
+  reason    String
+  evidence  Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("risks")
+}
+
+model Strategy {
+  id         Int      @id @default(autoincrement())
+  title      String
+  objective  String
+  description String
+  priority   String
+  confidence Float
+  evidence   Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("strategies")
+}
+
+model WorkflowLog {
+  id               Int       @id @default(autoincrement())
+  workflowName     String    @map("workflow_name")
+  status           String
+  startedAt        DateTime  @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  recordsProcessed Int       @default(0) @map("records_processed")
+  errorMessage     String?   @map("error_message")
+
+  @@map("workflow_logs")
+}
+
+model Report {
+  id               Int      @id @default(autoincrement())
+  reportType       String   @map("report_type")
+  title            String
+  executiveSummary String   @map("executive_summary")
+  period           Json
+  reportData       Json     @map("report_data")
+  generatedAt      DateTime @default(now()) @map("generated_at")
+
+  @@map("reports")
+}
