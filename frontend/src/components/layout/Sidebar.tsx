@@ -102,15 +102,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
           <div className="brand-title-wrap">
             <span className="brand-title">AI Competitive Analysis</span>
-            <span className="brand-subtitle">YouTube Intelligence</span>
+            <span className="brand-subtitle">Phân tích chuyên sâu YouTube</span>
           </div>
-          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Đóng thanh điều hướng">
             <X size={20} />
           </button>
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-group-label">QUẢN LÝ & WORKFLOW</div>
+          <div className="nav-group-label">QUẢN LÝ QUY TRÌNH</div>
           <ul className="nav-list">
             {navItems.map((item) => {
               const IconComponent = item.icon;
@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <span className="status-dot online" />
             <div className="status-info">
               <span className="status-title">Hệ thống sẵn sàng</span>
-              <span className="status-desc">UI Mock Mode (v1.0)</span>
+              <span className="status-desc">Chế độ giao diện mô phỏng (v1.0)</span>
             </div>
           </div>
         </div>

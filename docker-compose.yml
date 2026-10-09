@@ -19,6 +19,15 @@ services:
     environment:
       DATABASE_URL: postgresql://myuser:mypassword@db:5432/competitor_db?schema=public
       PORT: 3000
+      N8N_WF01_WEBHOOK_URL: ${N8N_WF01_WEBHOOK_URL:-}
+      N8N_WF01_WEBHOOK_TOKEN: ${N8N_WF01_WEBHOOK_TOKEN:-}
+      N8N_WF03_WEBHOOK_URL: ${N8N_WF03_WEBHOOK_URL:-}
+      N8N_WF03_WEBHOOK_TOKEN: ${N8N_WF03_WEBHOOK_TOKEN:-}
+      AUTH_USERNAME: ${AUTH_USERNAME:-}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
+      AUTH_ROLE: ${AUTH_ROLE:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,https://enrich-tile-shale.ngrok-free.dev}
     depends_on:
       - db
     command: npm run dev

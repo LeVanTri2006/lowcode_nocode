@@ -3,6 +3,24 @@ import { prisma } from '../prisma/client';
 
 const router = Router();
 
+router.get('/', async (req, res) => {
+  try {
+    // This is the internal SocialContent.id, not the platform's video ID.
+    const socialContentId = req.query.socialContentId ? Number(req.query.socialContentId) : undefined;
+    if (socialContentId !== undefined && !Number.isInteger(socialContentId)) {
+      return res.status(400).json({ success: false, message: 'socialContentId must be an integer' });
+    }
+    const data = await prisma.socialMetric.findMany({
+      where: socialContentId === undefined ? {} : { socialContentId },
+      orderBy: { capturedAt: 'asc' },
+      include: { socialContent: { include: { competitor: { select: { name: true } } } } }
+    });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error?.message || 'Failed to fetch social metrics' });
+  }
+});
+
 router.post('/', async (req, res, next) => {
   try {
     const { content_id, views, likes, comments, shares, captured_at } = req.body;

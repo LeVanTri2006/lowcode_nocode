@@ -29,10 +29,10 @@ export const WORKFLOW_EXECUTION_LIST: WorkflowStatusItem[] = [
     code: 'WF01',
     name: 'Quản lý đối thủ & Thu thập dữ liệu',
     path: '/wf01',
-    status: 'Hoàn thành',
-    lastRun: '08/10/2026 15:30',
-    duration: '12s',
-    itemsCount: '15 items / 3 đối thủ',
+    status: 'Sẵn sàng',
+    lastRun: 'Chưa có dữ liệu xác nhận',
+    duration: '-',
+    itemsCount: 'Chưa có dữ liệu xác nhận',
     isCore: true,
   },
   {
@@ -42,7 +42,7 @@ export const WORKFLOW_EXECUTION_LIST: WorkflowStatusItem[] = [
     status: 'Hoàn thành',
     lastRun: '08/10/2026 15:31',
     duration: '5s',
-    itemsCount: '15 items hợp lệ',
+    itemsCount: '15 mục hợp lệ',
     isCore: true,
   },
   {
@@ -157,7 +157,7 @@ export const WorkflowExecutionStatus: React.FC<WorkflowExecutionStatusProps> = (
     return (
       <section className="wf-single-execution ui-card" aria-label={`Trạng thái ${selectedWorkflow.code}`}>
         <div className="wf-single-copy">
-          <span className="wf-single-kicker">Execution status · Mock</span>
+          <span className="wf-single-kicker">Trạng thái chạy · Mô phỏng</span>
           <h3>{selectedWorkflow.code} · {selectedWorkflow.name}</h3>
           <p>Chạy mô phỏng cục bộ. Không kết nối API hoặc n8n.</p>
         </div>
@@ -167,7 +167,7 @@ export const WorkflowExecutionStatus: React.FC<WorkflowExecutionStatusProps> = (
           </span>
           <button type="button" className="btn btn-primary wf-run-button" onClick={runWorkflow} disabled={runState === 'Running'}>
             {runState === 'Running' ? <RotateCw size={15} className="spin-icon" /> : <Play size={15} />}
-            {runState === 'Running' ? 'Đang chạy…' : 'Chạy workflow'}
+            {runState === 'Running' ? 'Đang chạy…' : 'Chạy quy trình'}
           </button>
         </div>
       </section>
@@ -209,7 +209,7 @@ export const WorkflowExecutionStatus: React.FC<WorkflowExecutionStatusProps> = (
         return (
           <span className="wf-status-badge mock">
             <Sparkles size={12} />
-            <span>Mock UI</span>
+            <span>Giao diện mô phỏng</span>
           </span>
         );
     }
@@ -219,14 +219,14 @@ export const WorkflowExecutionStatus: React.FC<WorkflowExecutionStatusProps> = (
     <div className="wf-execution-card ui-card">
       <div className="wf-execution-header">
         <div>
-          <h3 className="wf-execution-title">Trạng thái thực thi các Workflow (Execution Pipeline)</h3>
+          <h3 className="wf-execution-title">Trạng thái thực thi các Quy trình (luồng thực thi)</h3>
           <p className="wf-execution-subtitle">
             Theo dõi tiến độ, thời gian thực thi và trạng thái dữ liệu từ WF01 đến WF10.
           </p>
         </div>
         <div className="wf-pipeline-pills">
-          <span className="pipeline-pill core">WF01 - WF05: Core Pipeline</span>
-          <span className="pipeline-pill mock">WF06 - WF10: Extended Mock</span>
+          <span className="pipeline-pill core">WF01 - WF05: Luồng chính</span>
+          <span className="pipeline-pill mock">WF06 - WF10: Luồng mở rộng mô phỏng</span>
         </div>
       </div>
 
@@ -234,7 +234,7 @@ export const WorkflowExecutionStatus: React.FC<WorkflowExecutionStatusProps> = (
         <table className="wf-execution-table">
           <thead>
             <tr>
-              <th style={{ width: '85px' }}>Workflow</th>
+              <th style={{ width: '85px' }}>Quy trình</th>
               <th>Tên quy trình nghiệp vụ</th>
               <th style={{ width: '135px' }}>Trạng thái</th>
               <th style={{ width: '145px' }}>Lần chạy gần nhất</th>

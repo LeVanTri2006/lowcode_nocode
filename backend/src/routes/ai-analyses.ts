@@ -3,6 +3,18 @@ import { prisma } from '../prisma/client';
 
 const router = Router();
 
+router.get('/', async (_req, res) => {
+  try {
+    const data = await prisma.aiAnalysis.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { socialContent: { include: { competitor: { select: { name: true } } } } }
+    });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error?.message || 'Failed to fetch AI analyses' });
+  }
+});
+
 router.post('/', async (req, res, next) => {
   try {
     const {

@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Menu,
   ChevronDown,
   User,
-  Settings,
   LogOut,
   CheckCircle2,
   AlertTriangle,
@@ -13,6 +12,8 @@ import {
 } from 'lucide-react';
 import { WORKFLOW_STEPS } from '../../types/workflow';
 import './TopHeader.css';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../common/Toast';
 
 interface TopHeaderProps {
   onToggleSidebar: () => void;
@@ -20,11 +21,18 @@ interface TopHeaderProps {
 
 export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { showToast } = useToast();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const handleLogout = async () => {
+    try { await signOut(); setShowUserDropdown(false); navigate('/login', { state: { returnTo: location.pathname } }); }
+    catch { showToast('Không thể đăng xuất khỏi máy chủ. Vui lòng thử lại.', 'error'); }
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -60,7 +68,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
     {
       id: '1',
       title: 'Cảnh báo tăng trưởng mới',
-      desc: 'Marques Brownlee vừa có video mới tăng trưởng views +350% trong 24h.',
+      desc: 'Marques Brownlee vừa có video mới tăng trưởng lượt xem +350% trong 24 giờ.',
       time: '10 phút trước',
       icon: AlertTriangle,
       color: '#EF4444',
@@ -92,7 +100,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
         <button
           className="mobile-sidebar-toggle"
           onClick={onToggleSidebar}
-          aria-label="Toggle navigation"
+          aria-label="Mở hoặc đóng điều hướng"
         >
           <Menu size={22} />
         </button>
@@ -105,12 +113,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
       </div>
 
       <div className="header-right">
-        {/* Notifications */}
+        {/* Thông báo */}
         <div className="header-action-wrap" ref={notificationRef}>
           <button
             className={`notification-btn ${showNotifications ? 'active' : ''}`}
             onClick={() => setShowNotifications(!showNotifications)}
-            aria-label="Notifications"
+            aria-label="Thông báo"
           >
             <Bell size={20} />
             <span className="notification-badge">3</span>
@@ -123,7 +131,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
                   <h4 className="dropdown-title">Thông báo</h4>
                   <span className="dropdown-subtitle">3 thông báo mới chưa đọc</span>
                 </div>
-                <button className="mark-read-btn">Đánh dấu đã đọc</button>
+                <button className="mark-read-btn">Đánh dấu đã xem</button>
               </div>
 
               <div className="notification-list">
@@ -151,25 +159,25 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
               </div>
 
               <div className="dropdown-footer">
-                <button className="view-all-btn">Xem tất cả thông báo</button>
+                <button className="view-all-btn">Xem toàn bộ thông báo</button>
               </div>
             </div>
           )}
         </div>
 
         {/* User Profile */}
-        <div className="user-profile-wrap" ref={userDropdownRef}>
+        {user ? <div className="user-profile-wrap" ref={userDropdownRef}>
           <button
             className="user-profile-btn"
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             aria-expanded={showUserDropdown}
           >
             <div className="user-avatar">
-              <span>T</span>
+              <span>{user.username.slice(0, 1).toUpperCase()}</span>
             </div>
             <div className="user-info">
-              <span className="user-name">Trí Lê Văn</span>
-              <span className="user-role">Administrator</span>
+              <span className="user-name">{user.username}</span>
+              <span className="user-role">{user.role === 'operator' ? 'Người vận hành' : 'Người xem'}</span>
             </div>
             <ChevronDown size={16} className={`chevron-icon ${showUserDropdown ? 'rotated' : ''}`} />
           </button>
@@ -177,29 +185,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
           {showUserDropdown && (
             <div className="user-dropdown-menu fade-in">
               <div className="user-dropdown-header">
-                <div className="dropdown-avatar">T</div>
+                <div className="dropdown-avatar">{user.username.slice(0, 1).toUpperCase()}</div>
                 <div className="dropdown-user-details">
-                  <div className="dropdown-user-name">Trí Lê Văn</div>
-                  <div className="dropdown-user-email">vantri@example.com</div>
+                  <div className="dropdown-user-name">{user.username}</div>
+                  <div className="dropdown-user-email">{user.role === 'operator' ? 'Người vận hành WF01' : 'Chỉ xem dữ liệu'}</div>
                 </div>
               </div>
               <div className="dropdown-divider" />
-              <button className="dropdown-item">
-                <User size={16} />
-                <span>Hồ sơ cá nhân</span>
-              </button>
-              <button className="dropdown-item">
-                <Settings size={16} />
-                <span>Cài đặt hệ thống</span>
-              </button>
               <div className="dropdown-divider" />
-              <button className="dropdown-item logout">
+              <button className="dropdown-item logout" onClick={handleLogout}>
                 <LogOut size={16} />
                 <span>Đăng xuất</span>
               </button>
             </div>
           )}
-        </div>
+        </div> : <button className="user-profile-btn" onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}><User size={17} /><span className="user-name">Đăng nhập</span></button>}
       </div>
     </header>
   );

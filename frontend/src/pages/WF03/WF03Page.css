@@ -4,6 +4,24 @@
   gap: 20px;
 }
 
+.wf03-run-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.wf03-run-copy { min-width: 0; }
+.wf03-run-copy h2 { margin: 0 0 6px; color: var(--text-main); font-size: 15px; }
+.wf03-run-copy p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.wf03-run-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; min-height: 40px; }
+.wf03-run-button:disabled { cursor: not-allowed; opacity: .6; }
+.wf03-run-state { display: block; margin-top: 8px; font-size: 12px; }
+.wf03-run-state.accepted { color: #047857; }
+.wf03-run-state.no_work { color: #475569; }
+.wf03-run-state.error { color: #b91c1c; }
+
 /* TOP KPI GRID */
 .wf03-kpi-grid {
   display: grid;
@@ -466,8 +484,42 @@
   line-height: 1.5;
 }
 
+.wf03-state,
+.wf03-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.wf03-error {
+  justify-content: space-between;
+  color: #b91c1c;
+  background: #fff7f7;
+  border-block: 1px solid #fecaca;
+  text-align: left;
+}
+
+.wf03-error.compact { padding: 10px 14px; font-size: 12px; }
+.wf03-detail-error { flex-direction: column; color: #b91c1c; }
+.wf03-detail-error p { margin: 0; }
+.wf03-list-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; color: var(--text-muted); font-size: 11px; }
+.wf03-list-footer .btn { flex: 0 0 auto; }
+.video-preview-placeholder { height: 115px; border-radius: var(--radius-sm); background: #f1f5f9; color: #64748b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; font-size: 10px; padding: 10px; }
+.wf03-created-at { color: var(--text-muted); font-size: 11px; margin: 0; }
+.wf03-page-container button:disabled { cursor: not-allowed; opacity: .55; }
+
 @media (max-width: 1200px) {
   .wf03-columns-grid {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 640px) {
+  .wf03-run-card { align-items: stretch; flex-direction: column; }
+  .wf03-run-button { width: 100%; }
 }
