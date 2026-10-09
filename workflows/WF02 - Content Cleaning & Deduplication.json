@@ -1,0 +1,356 @@
+{
+  "name": "WF02 - Content Cleaning & Deduplication",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction normalizeText(value) {\n  return String(value ?? \"\")\n    .replace(/\\r\\n/g, \"\\n\")\n    .replace(/[ \\t]+/g, \" \")\n    .trim();\n}\n\nfunction normalizeDate(value) {\n  if (!value) {\n    return null;\n  }\n\n  const date = new Date(value);\n\n  if (Number.isNaN(date.getTime())) {\n    return null;\n  }\n\n  return date.toISOString();\n}\n\nreturn items.map((item) => {\n  const raw = item.json;\n\n  const rawId = raw.id ?? null;\n\n  return {\n    json: {\n      // ID DB chưa có khi content mới từ WF01 đi sang WF02\n      id:\n        rawId === null || rawId === \"\"\n          ? null\n          : Number(rawId),\n\n      competitor_id: Number(\n        raw.competitor_id ?? raw.competitorId\n      ),\n\n      platform: normalizeText(\n        raw.platform\n      ).toLowerCase(),\n\n      content_id: normalizeText(\n        raw.content_id ?? raw.contentId\n      ),\n\n      title: normalizeText(\n        raw.title\n      ),\n\n      description: normalizeText(\n        raw.description\n      ),\n\n      url: normalizeText(\n        raw.url\n      ),\n\n      published_at: normalizeDate(\n        raw.published_at ?? raw.publishedAt\n      ),\n\n      // Có thì normalize, không có thì để null\n      created_at: normalizeDate(\n        raw.created_at ?? raw.createdAt\n      )\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "b8db1ee0-700f-4a06-9c07-fd9d228bc15a",
+      "name": "04 - Normalize Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction cleanText(value) {\n  return String(value ?? \"\")\n    // Chuẩn hóa non-breaking space\n    .replace(/\\u00A0/g, \" \")\n\n    // Loại bỏ ký tự điều khiển không cần thiết\n    .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, \" \")\n\n    // Chuẩn hóa xuống dòng\n    .replace(/\\r\\n/g, \"\\n\")\n    .replace(/\\r/g, \"\\n\")\n\n    // Đưa xuống dòng/tab về khoảng trắng\n    .replace(/\\s+/g, \" \")\n\n    // Xóa khoảng trắng đầu/cuối\n    .trim();\n}\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      id: data.id,\n\n      competitor_id: data.competitor_id,\n\n      platform: data.platform,\n\n      content_id: data.content_id,\n\n      title: cleanText(data.title),\n\n      description: cleanText(data.description),\n\n      url: data.url,\n\n      published_at: data.published_at,\n\n      created_at: data.created_at\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "21ffd6c2-ba1c-4d80-9483-dfe756ed1144",
+      "name": "05 - Clean Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction isValidUrl(value) {\n  if (typeof value !== \"string\") {\n    return false;\n  }\n\n  const url = value.trim();\n\n  return /^https?:\\/\\/[^\\s]+$/i.test(url);\n}\n\nfunction isValidDate(value) {\n  if (!value) {\n    return false;\n  }\n\n  const date = new Date(value);\n\n  return !Number.isNaN(date.getTime());\n}\n\nfunction isValidYoutubeContentId(contentId) {\n  return /^[A-Za-z0-9_-]{11}$/.test(contentId);\n}\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  // ID DB chỉ validate nếu đã tồn tại.\n  // Content mới từ WF01 chưa có ID.\n  if (\n    data.id !== null &&\n    data.id !== undefined &&\n    (\n      !Number.isInteger(data.id) ||\n      data.id <= 0\n    )\n  ) {\n    errors.push(\"id không hợp lệ\");\n  }\n\n  if (\n    !Number.isInteger(data.competitor_id) ||\n    data.competitor_id <= 0\n  ) {\n    errors.push(\"competitor_id không hợp lệ\");\n  }\n\n  if (!data.platform) {\n    errors.push(\"platform bị thiếu\");\n  }\n\n  if (!data.content_id) {\n    errors.push(\"content_id bị thiếu\");\n  } else if (\n    data.platform === \"youtube\" &&\n    !isValidYoutubeContentId(data.content_id)\n  ) {\n    errors.push(\n      \"content_id YouTube không đúng định dạng\"\n    );\n  }\n\n  if (!data.title) {\n    errors.push(\"title bị thiếu\");\n  }\n\n  if (!isValidUrl(data.url)) {\n    errors.push(\"url không hợp lệ\");\n  }\n\n  if (!isValidDate(data.published_at)) {\n    errors.push(\"published_at không hợp lệ\");\n  }\n\n  // created_at không bắt buộc vì backend sẽ tạo khi lưu.\n  if (\n    data.created_at !== null &&\n    data.created_at !== undefined &&\n    !isValidDate(data.created_at)\n  ) {\n    errors.push(\"created_at không hợp lệ\");\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "8f9b7387-2475-4d85-9f08-ef3fdbdc7cdb",
+      "name": "06 - Validate Content"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cf540d68-ffe0-4811-aa35-3cb1eae74274",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "1a2c9e61-729a-497c-94d3-efef66bc8c53",
+      "name": "07 - IF Valid"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents/check",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "={{$json.platform}}"
+            },
+            {
+              "name": "content_id",
+              "value": "={{$json.content_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1664,
+        -32
+      ],
+      "id": "74666112-cf43-40e4-a47c-d2a26fd95fe1",
+      "name": "08 - Duplicate Check"
+    },
+    {
+      "parameters": {
+        "jsCode": "const duplicateResults = $input.all();\nconst originalItems = $('07 - IF Valid').all();\n\nif (duplicateResults.length !== originalItems.length) {\n  throw new Error(\n    `Số lượng item không khớp: Duplicate Check=${duplicateResults.length}, Original=${originalItems.length}`\n  );\n}\n\nreturn duplicateResults.map((item, index) => {\n  const original = originalItems[index]?.json;\n\n  if (!original) {\n    throw new Error(`Không tìm thấy content gốc tại index ${index}`);\n  }\n\n  return {\n    json: {\n      ...original,\n\n      duplicate_check_success: item.json.success === true,\n      exists: item.json.exists === true\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        -32
+      ],
+      "id": "7aa28ac9-d8df-49f2-a62b-b089e8ede8a3",
+      "name": "09 - Merge Content + Duplicate Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4debd2c9-e524-469d-9805-e69ac62fa255",
+              "leftValue": "={{$json.exists}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2112,
+        -32
+      ],
+      "id": "1ee88248-c901-46f0-80df-28c83ff2e2a0",
+      "name": "10 - IF New Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      content_id: data.content_id ?? null,\n      title: data.title ?? \"\",\n      platform: data.platform ?? null,\n\n      processing_status: \"ignored_invalid\",\n\n      validation_errors: data.validation_errors ?? []\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        160
+      ],
+      "id": "382052ce-ecde-45a3-b43a-5a61e60ffcd3",
+      "name": "07F - Ignore Invalid Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      content_id: data.content_id ?? null,\n      title: data.title ?? \"\",\n      platform: data.platform ?? null,\n\n      processing_status: \"ignored_duplicate\",\n\n      exists: data.exists === true\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        96
+      ],
+      "id": "accf29d6-42b6-4ede-a2a5-fbd9073e6e84",
+      "name": "10F - Ignore Duplicate Content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "competitor_id",
+              "value": "={{$json.competitor_id}}"
+            },
+            {
+              "name": "platform",
+              "value": "={{$json.platform}}"
+            },
+            {
+              "name": "content_id",
+              "value": "={{$json.content_id}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "description",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "url",
+              "value": "={{$json.url}}"
+            },
+            {
+              "name": "published_at",
+              "value": "={{$json.published_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2336,
+        -112
+      ],
+      "id": "6d1f1f48-aa98-4e6a-a27d-f5f1fef84b7b",
+      "name": "10T - Save New Content"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "2700e024-d988-45d6-b2d0-84543e3c75e1",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "04 - Normalize Content": {
+      "main": [
+        [
+          {
+            "node": "05 - Clean Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Clean Text": {
+      "main": [
+        [
+          {
+            "node": "06 - Validate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Validate Content": {
+      "main": [
+        [
+          {
+            "node": "07 - IF Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - IF Valid": {
+      "main": [
+        [
+          {
+            "node": "08 - Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "07F - Ignore Invalid Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "09 - Merge Content + Duplicate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Merge Content + Duplicate Status": {
+      "main": [
+        [
+          {
+            "node": "10 - IF New Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - IF New Content": {
+      "main": [
+        [
+          {
+            "node": "10T - Save New Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10F - Ignore Duplicate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "04 - Normalize Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "020a35ce-13c5-4e71-b376-5d029a3e7cfd",
+  "meta": {
+    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+  },
+  "nodeGroups": [],
+  "id": "Gxu19Rk8lLVEjTxX",
+  "tags": []
+}

@@ -1,0 +1,333 @@
+{
+  "name": "WF04 - Competitor Performance Analysis",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d3136209-70e7-484d-bd6e-7c47eb145424",
+      "name": "01 - Start WF04"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "72bc539d-cdf2-4710-81a4-ee7cd61cd7ba",
+      "name": "02 - Get Performance Data"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "b43b5768-382d-488c-8f36-034b4be955c3",
+      "name": "03 - Split Performance Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst output = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  const views = Number(data.views ?? 0);\n  const likes = Number(data.likes ?? 0);\n  const comments = Number(data.comments ?? 0);\n\n  const totalEngagement = likes + comments;\n\n  const engagementRate =\n    views > 0\n      ? Number(((totalEngagement / views) * 100).toFixed(2))\n      : 0;\n\n  const likeRate =\n    views > 0\n      ? Number(((likes / views) * 100).toFixed(2))\n      : 0;\n\n  const commentRate =\n    views > 0\n      ? Number(((comments / views) * 100).toFixed(2))\n      : 0;\n\n  output.push({\n    json: {\n      ...data,\n\n      total_engagement: totalEngagement,\n      engagement_rate: engagementRate,\n      like_rate: likeRate,\n      comment_rate: commentRate\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "adaa45b2-505a-4a97-a4b1-62eb40d6713c",
+      "name": "04 - Calculate Video Performance"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst groups = new Map();\n\nfor (const item of items) {\n  const data = item.json;\n\n  const competitorId = data.competitorId;\n  const competitorName = data.competitorName;\n  const platform = data.platform;\n\n  if (competitorId == null) {\n    continue;\n  }\n\n  if (!groups.has(competitorId)) {\n    groups.set(competitorId, {\n      competitor_id: competitorId,\n      competitor_name: competitorName ?? \"\",\n      platform: platform ?? \"\",\n\n      video_count: 0,\n\n      total_views: 0,\n      total_likes: 0,\n      total_comments: 0,\n      total_engagement: 0,\n\n      total_like_rate: 0,\n      total_comment_rate: 0\n    });\n  }\n\n  const group = groups.get(competitorId);\n\n  const views = Number(data.views ?? 0);\n  const likes = Number(data.likes ?? 0);\n  const comments = Number(data.comments ?? 0);\n  const engagement = Number(data.total_engagement ?? 0);\n\n  const likeRate = Number(data.like_rate ?? 0);\n  const commentRate = Number(data.comment_rate ?? 0);\n\n  group.video_count += 1;\n\n  group.total_views += views;\n  group.total_likes += likes;\n  group.total_comments += comments;\n  group.total_engagement += engagement;\n\n  group.total_like_rate += likeRate;\n  group.total_comment_rate += commentRate;\n}\n\nconst output = [];\n\nfor (const group of groups.values()) {\n  const videoCount = group.video_count;\n\n  const averageViews =\n    videoCount > 0\n      ? Number((group.total_views / videoCount).toFixed(2))\n      : 0;\n\n  const averageLikes =\n    videoCount > 0\n      ? Number((group.total_likes / videoCount).toFixed(2))\n      : 0;\n\n  const averageComments =\n    videoCount > 0\n      ? Number((group.total_comments / videoCount).toFixed(2))\n      : 0;\n\n  const aggregateEngagementRate =\n    group.total_views > 0\n      ? Number(\n          ((group.total_engagement / group.total_views) * 100).toFixed(2)\n        )\n      : 0;\n\n  const averageLikeRate =\n    videoCount > 0\n      ? Number((group.total_like_rate / videoCount).toFixed(2))\n      : 0;\n\n  const averageCommentRate =\n    videoCount > 0\n      ? Number((group.total_comment_rate / videoCount).toFixed(2))\n      : 0;\n\n  output.push({\n    json: {\n      competitor_id: group.competitor_id,\n      competitor_name: group.competitor_name,\n      platform: group.platform,\n\n      video_count: videoCount,\n\n      total_views: group.total_views,\n      total_likes: group.total_likes,\n      total_comments: group.total_comments,\n      total_engagement: group.total_engagement,\n\n      average_views: averageViews,\n      average_likes: averageLikes,\n      average_comments: averageComments,\n\n      engagement_rate: aggregateEngagementRate,\n      average_like_rate: averageLikeRate,\n      average_comment_rate: averageCommentRate\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "9921c121-03c4-4a4a-a2a3-1c1f0fd0c710",
+      "name": "05 - Aggregate Competitor Performance"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst competitors = items.map(item => ({\n  ...item.json\n}));\n\n// Xếp hạng theo engagement_rate giảm dần\ncompetitors.sort(\n  (a, b) =>\n    Number(b.engagement_rate ?? 0) -\n    Number(a.engagement_rate ?? 0)\n);\n\nconst output = competitors.map((competitor, index) => ({\n  json: {\n    ...competitor,\n\n    performance_rank: index + 1\n  }\n}));\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "5bad53b6-6df3-43d1-8c1f-6b3c5b7d7c84",
+      "name": "06 - Calculate Competitor Ranking"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  if (data.competitor_id == null) {\n    errors.push(\"competitor_id không hợp lệ\");\n  }\n\n  if (!data.competitor_name) {\n    errors.push(\"competitor_name không hợp lệ\");\n  }\n\n  if (!data.platform) {\n    errors.push(\"platform không hợp lệ\");\n  }\n\n  if (Number(data.video_count ?? 0) <= 0) {\n    errors.push(\"video_count phải lớn hơn 0\");\n  }\n\n  if (Number(data.total_views ?? -1) < 0) {\n    errors.push(\"total_views không hợp lệ\");\n  }\n\n  if (Number(data.total_likes ?? -1) < 0) {\n    errors.push(\"total_likes không hợp lệ\");\n  }\n\n  if (Number(data.total_comments ?? -1) < 0) {\n    errors.push(\"total_comments không hợp lệ\");\n  }\n\n  if (Number(data.total_engagement ?? -1) < 0) {\n    errors.push(\"total_engagement không hợp lệ\");\n  }\n\n  if (Number(data.engagement_rate ?? -1) < 0) {\n    errors.push(\"engagement_rate không hợp lệ\");\n  }\n\n  if (!Number.isInteger(Number(data.performance_rank))) {\n    errors.push(\"performance_rank không hợp lệ\");\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "5a5651f4-deeb-4fcd-95f3-45a02f673462",
+      "name": "07 - Validate Performance"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "56dcc90c-c994-43ed-bbfb-40f657be1f2f",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "8a13cc6b-0e0e-4a6e-b1b6-989d6ae49d8b",
+      "name": "08 - IF Performance Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      competitor_id: data.competitor_id ?? null,\n      competitor_name: data.competitor_name ?? \"\",\n      platform: data.platform ?? null,\n\n      processing_status: \"performance_invalid\",\n\n      validation_errors: Array.isArray(data.validation_errors)\n        ? data.validation_errors\n        : [\"Performance data không hợp lệ\"]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        96
+      ],
+      "id": "65b82e23-e1af-4d15-8df2-2fc3326371a5",
+      "name": "09 - Handle Performance Error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-analyses",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "competitor_id",
+              "value": "={{$json.competitor_id}}"
+            },
+            {
+              "name": "competitor_name",
+              "value": "={{$json.competitor_name}}"
+            },
+            {
+              "name": "platform",
+              "value": "={{$json.platform}}"
+            },
+            {
+              "name": "video_count",
+              "value": "={{$json.video_count}}"
+            },
+            {
+              "name": "total_views",
+              "value": "={{$json.total_views}}"
+            },
+            {
+              "name": "total_likes",
+              "value": "={{$json.total_likes}}"
+            },
+            {
+              "name": "total_comments",
+              "value": "={{$json.total_comments}}"
+            },
+            {
+              "name": "total_engagement",
+              "value": "={{$json.total_engagement}}"
+            },
+            {
+              "name": "average_views",
+              "value": "={{$json.average_views}}"
+            },
+            {
+              "name": "average_likes",
+              "value": "={{$json.average_likes}}"
+            },
+            {
+              "name": "average_comments",
+              "value": "={{$json.average_comments}}"
+            },
+            {
+              "name": "engagement_rate",
+              "value": "={{$json.engagement_rate}}"
+            },
+            {
+              "name": "average_like_rate",
+              "value": "={{$json.average_like_rate}}"
+            },
+            {
+              "name": "average_comment_rate",
+              "value": "={{$json.average_comment_rate}}"
+            },
+            {
+              "name": "performance_rank",
+              "value": "={{$json.performance_rank}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1792,
+        -96
+      ],
+      "id": "39dfc722-85f6-4424-bc83-faf5843d513c",
+      "name": "10 - Save Performance Analysis"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF04": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Performance Data": {
+      "main": [
+        [
+          {
+            "node": "03 - Split Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Split Performance Data": {
+      "main": [
+        [
+          {
+            "node": "04 - Calculate Video Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Calculate Video Performance": {
+      "main": [
+        [
+          {
+            "node": "05 - Aggregate Competitor Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Aggregate Competitor Performance": {
+      "main": [
+        [
+          {
+            "node": "06 - Calculate Competitor Ranking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Calculate Competitor Ranking": {
+      "main": [
+        [
+          {
+            "node": "07 - Validate Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Validate Performance": {
+      "main": [
+        [
+          {
+            "node": "08 - IF Performance Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - IF Performance Valid": {
+      "main": [
+        [
+          {
+            "node": "10 - Save Performance Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "09 - Handle Performance Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ad059c9a-442d-406a-b80d-3833838adede",
+  "meta": {
+    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+  },
+  "nodeGroups": [],
+  "id": "aG2uDFh0rm8KyVuX",
+  "tags": []
+}

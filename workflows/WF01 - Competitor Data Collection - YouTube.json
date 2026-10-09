@@ -1,0 +1,491 @@
+{
+  "name": "WF01 - Competitor Data Collection - YouTube",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b5b59daf-7dfb-4e28-94c0-ba88feaa308c",
+      "name": "01 - Start WF01",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/competitors",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "youtube"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "982c9f85-bbd6-4a99-8c1a-f977251ec502",
+      "name": "02 - Get Competitors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "7653d444-e6ba-4cae-b26d-1f73375ecc9c",
+      "name": "03 - Split Competitors",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/channels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "contentDetails"
+            },
+            {
+              "name": "id",
+              "value": "={{$json.channelId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        0
+      ],
+      "id": "7b583825-891a-4d7d-b54f-41a89666cc1f",
+      "name": "04 - Get YouTube Channel",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "dMFlUzJ8gsBhqrqb",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const youtubeResults = $input.all();\nconst competitors = $('03 - Split Competitors').all();\n\nconst output = [];\n\nfor (let i = 0; i < youtubeResults.length; i++) {\n  const youtubeItem = youtubeResults[i].json;\n  const competitor = competitors[i]?.json;\n\n  if (!competitor) {\n    throw new Error(`Không tìm thấy competitor tương ứng ở index ${i}`);\n  }\n\n  const channel = youtubeItem.items?.[0];\n\n  if (!channel) {\n    throw new Error(\n      `YouTube không trả về channel cho competitor: ${competitor.name}`\n    );\n  }\n\n  const uploadsPlaylistId =\n    channel.contentDetails?.relatedPlaylists?.uploads;\n\n  if (!uploadsPlaylistId) {\n    throw new Error(\n      `Không tìm thấy uploads playlist của competitor: ${competitor.name}`\n    );\n  }\n\n  output.push({\n    json: {\n      competitor_id: competitor.id,\n      competitor_name: competitor.name,\n      platform: competitor.platform,\n      channel_id: competitor.channelId,\n      uploads_playlist_id: uploadsPlaylistId\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "935d3690-ecb0-4fc7-81d6-b0be8c351a9e",
+      "name": "05 - Extract Uploads Playlist"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/playlistItems",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet,contentDetails"
+            },
+            {
+              "name": "playlistId",
+              "value": "={{$json.uploads_playlist_id}}"
+            },
+            {
+              "name": "maxResults",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "b257ab25-774c-4675-9084-59a92fb071dc",
+      "name": "06 - Get Latest Videos",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "dMFlUzJ8gsBhqrqb",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const playlistResponses = $input.all();\nconst competitors = $('05 - Extract Uploads Playlist').all();\n\nconst output = [];\n\nfor (let i = 0; i < playlistResponses.length; i++) {\n  const playlist = playlistResponses[i].json;\n  const competitor = competitors[i]?.json;\n\n  if (!competitor) {\n    throw new Error(\n      `Không tìm thấy competitor tương ứng tại index ${i}`\n    );\n  }\n\n  const videos = playlist.items ?? [];\n\n  for (const video of videos) {\n    const videoId = video.contentDetails?.videoId;\n\n    if (!videoId) {\n      continue;\n    }\n\n    output.push({\n      json: {\n        competitor_id: competitor.competitor_id,\n        competitor_name: competitor.competitor_name,\n        platform: competitor.platform,\n        channel_id: competitor.channel_id,\n        uploads_playlist_id: competitor.uploads_playlist_id,\n\n        video_id: videoId,\n\n        title: video.snippet?.title ?? \"\",\n        description: video.snippet?.description ?? \"\",\n        published_at:\n          video.contentDetails?.videoPublishedAt ??\n          video.snippet?.publishedAt ??\n          null\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        0
+      ],
+      "id": "0dab1e8d-cf20-4ff0-b876-87655f1e2d35",
+      "name": "07 - Extract Video IDs"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6dc8c94c-a32b-4d87-af33-8de610d72d61",
+              "leftValue": "={{$json.video_id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "183f0ba3-e776-48b2-b0e5-1c49b7b26365",
+      "name": "08 - Check Video IDs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst videoIds = items\n  .map(item => item.json.video_id)\n  .filter(Boolean);\n\nif (videoIds.length === 0) {\n  throw new Error('Không có video_id hợp lệ');\n}\n\nreturn [\n  {\n    json: {\n      video_ids: videoIds.join(',')\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        0
+      ],
+      "id": "8f71b184-9dde-4e98-a5f5-77f780548677",
+      "name": "09 – Build Video ID List"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/videos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet,statistics"
+            },
+            {
+              "name": "id",
+              "value": "={{$json.video_ids}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2048,
+        -80
+      ],
+      "id": "ff9cc2ac-32a8-4311-bf92-cd5e8390e05e",
+      "name": "10- Get Video Details",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "dMFlUzJ8gsBhqrqb",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses = $input.all();\n\nif (responses.length === 0) {\n  throw new Error('Không có dữ liệu từ Node 10 - Get Video Details');\n}\n\n// Node 10 chỉ tạo 1 item chứa items[]\nconst videos = responses[0].json.items ?? [];\n\nif (videos.length === 0) {\n  throw new Error('YouTube không trả về video nào');\n}\n\n// Lấy mapping competitor từ Node 05\nconst competitors = $('05 - Extract Uploads Playlist').all();\n\nconst competitorMap = new Map(\n  competitors.map(item => [\n    item.json.channel_id,\n    {\n      competitor_id: item.json.competitor_id,\n      competitor_name: item.json.competitor_name,\n      platform: item.json.platform\n    }\n  ])\n);\n\nconst output = [];\n\nfor (const video of videos) {\n  const snippet = video.snippet ?? {};\n  const statistics = video.statistics ?? {};\n\n  const contentId = video.id;\n  const channelId = snippet.channelId;\n\n  if (!contentId) {\n    continue;\n  }\n\n  const competitor = competitorMap.get(channelId);\n\n  if (!competitor) {\n    throw new Error(\n      `Không tìm thấy competitor cho channelId: ${channelId}`\n    );\n  }\n\n  output.push({\n    json: {\n      competitor_id: competitor.competitor_id,\n      competitor_name: competitor.competitor_name,\n      platform: 'youtube',\n\n      content_id: contentId,\n\n      title: snippet.title ?? '',\n      description: snippet.description ?? '',\n\n      url: `https://www.youtube.com/watch?v=${contentId}`,\n\n      published_at: snippet.publishedAt ?? null,\n\n      views: Number(statistics.viewCount ?? 0),\n      likes: Number(statistics.likeCount ?? 0),\n      comments: Number(statistics.commentCount ?? 0),\n\n      shares: null,\n\n      captured_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -80
+      ],
+      "id": "a4d24b67-8882-4ba1-ae01-70c8acd0f207",
+      "name": "11 - Normalize Videos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-metrics",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content_id",
+              "value": "={{$json.content_id}}"
+            },
+            {
+              "name": "views",
+              "value": "={{$json.views}}"
+            },
+            {
+              "name": "likes",
+              "value": "={{$json.likes}}"
+            },
+            {
+              "name": "comments",
+              "value": "={{$json.comments}}"
+            },
+            {
+              "name": "shares",
+              "value": "={{$json.shares}}"
+            },
+            {
+              "name": "captured_at",
+              "value": "={{$json.captured_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2944,
+        -80
+      ],
+      "id": "e2654fcd-8c21-42be-9e1c-e39f44e0f2e0",
+      "name": "13 - Save Social Metrics"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Gxu19Rk8lLVEjTxX",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Gxu19Rk8lLVEjTxX",
+          "cachedResultName": "My project — WF02 - Content Cleaning & Deduplication"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        2496,
+        -80
+      ],
+      "id": "da9d0e99-51b2-4bb2-8237-6554e2673f06",
+      "name": "14 - Execute WF02"
+    },
+    {
+      "parameters": {
+        "jsCode": "const wf02Results = $input.all();\nconst sourceItems = $('11 - Normalize Videos').all();\n\n// Tạo map theo content_id để không phụ thuộc thứ tự item\nconst sourceMap = new Map();\n\nfor (const item of sourceItems) {\n  const data = item.json;\n\n  if (!data.content_id) {\n    continue;\n  }\n\n  sourceMap.set(data.content_id, data);\n}\n\nconst output = [];\n\nfor (const item of wf02Results) {\n  const result = item.json;\n\n  // Nếu WF02 xác định content không hợp lệ\n  // thì không lưu metric\n  if (result.processing_status === 'ignored_invalid') {\n    continue;\n  }\n\n  // Với Duplicate branch:\n  // content_id nằm trực tiếp ở result.content_id\n  //\n  // Với New branch:\n  // POST backend có thể trả contentId bên trong result.data\n  const contentId =\n    result.content_id ??\n    result.data?.contentId ??\n    null;\n\n  if (!contentId) {\n    throw new Error(\n      'Không tìm thấy content_id sau khi WF02 xử lý'\n    );\n  }\n\n  const source = sourceMap.get(contentId);\n\n  if (!source) {\n    throw new Error(\n      `Không tìm thấy dữ liệu metric gốc cho content_id: ${contentId}`\n    );\n  }\n\n  output.push({\n    json: {\n      content_id: source.content_id,\n\n      views: Number(source.views ?? 0),\n\n      likes: Number(source.likes ?? 0),\n\n      comments: Number(source.comments ?? 0),\n\n      shares:\n        source.shares === null ||\n        source.shares === undefined\n          ? null\n          : Number(source.shares),\n\n      captured_at: source.captured_at\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        -80
+      ],
+      "id": "a33a6406-ce77-46b3-8eb3-5fe57dcfd998",
+      "name": "15 - Prepare Metrics After WF02"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF01": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Competitors": {
+      "main": [
+        [
+          {
+            "node": "03 - Split Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Split Competitors": {
+      "main": [
+        [
+          {
+            "node": "04 - Get YouTube Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get YouTube Channel": {
+      "main": [
+        [
+          {
+            "node": "05 - Extract Uploads Playlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Extract Uploads Playlist": {
+      "main": [
+        [
+          {
+            "node": "06 - Get Latest Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Get Latest Videos": {
+      "main": [
+        [
+          {
+            "node": "07 - Extract Video IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Extract Video IDs": {
+      "main": [
+        [
+          {
+            "node": "08 - Check Video IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Check Video IDs": {
+      "main": [
+        [
+          {
+            "node": "09 – Build Video ID List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 – Build Video ID List": {
+      "main": [
+        [
+          {
+            "node": "10- Get Video Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10- Get Video Details": {
+      "main": [
+        [
+          {
+            "node": "11 - Normalize Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - Normalize Videos": {
+      "main": [
+        [
+          {
+            "node": "14 - Execute WF02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - Execute WF02": {
+      "main": [
+        [
+          {
+            "node": "15 - Prepare Metrics After WF02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 - Prepare Metrics After WF02": {
+      "main": [
+        [
+          {
+            "node": "13 - Save Social Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9dd49a46-698a-4277-9953-fea0265f7586",
+  "meta": {
+    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+  },
+  "nodeGroups": [],
+  "id": "ynmjctj6fJXQM1un",
+  "tags": []
+}

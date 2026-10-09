@@ -1,0 +1,341 @@
+{
+  "name": "WF03 - AI Competitor Content Analysis",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e197a7b3-fc4e-439d-9d24-8ad8c68e25bd",
+      "name": "01 - Start WF03"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "b211e0c1-6c3a-49ea-9c6c-9fd1a88aff56",
+      "name": "02 - Get Clean Contents"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a735ff8d-77a9-42cf-9181-33510837e1a7",
+      "name": "03 - Split Contents"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  const contentId = data.contentId ?? \"\";\n  const title = String(data.title ?? \"\").trim();\n  const description = String(data.description ?? \"\").trim();\n  const platform = String(data.platform ?? \"\").trim().toLowerCase();\n\n  const aiPrompt = `\nBạn là AI phân tích nội dung đối thủ trên mạng xã hội.\n\nHãy phân tích nội dung video dựa CHỈ trên title và description được cung cấp.\nKhông tự bịa thêm thông tin không có trong dữ liệu.\n\nTHÔNG TIN VIDEO:\n- Platform: ${platform}\n- Content ID: ${contentId}\n- Title: ${title}\n- Description:\n${description}\n\nHãy trả về DUY NHẤT một JSON object hợp lệ, không markdown, không \\`\\`\\`json.\n\nJSON bắt buộc có đúng các field sau:\n\n{\n  \"topic\": \"Chủ đề chính của nội dung\",\n  \"category\": \"Nhóm/chủ đề lớn\",\n  \"content_type\": \"Loại nội dung\",\n  \"sentiment\": \"positive | neutral | negative\",\n  \"keywords\": [\"keyword1\", \"keyword2\", \"keyword3\"],\n  \"summary\": \"Tóm tắt ngắn gọn nội dung\",\n  \"target_audience\": \"Đối tượng khán giả mục tiêu\",\n  \"key_message\": \"Thông điệp chính của nội dung\"\n}\n\nQUY TẮC:\n1. topic phải mô tả chủ đề chính.\n2. category phải là nhóm lớn, ví dụ: Technology, Science, Education, Entertainment, Business, Society.\n3. content_type có thể là các dạng như: Interview, Tutorial, Review, Explainer, Documentary, News, Experiment, Presentation.\n4. sentiment chỉ được là positive, neutral hoặc negative.\n5. keywords phải là một mảng string.\n6. summary phải ngắn gọn nhưng phản ánh đúng nội dung.\n7. target_audience phải dựa trên nội dung thực tế được cung cấp.\n8. key_message phải nêu được thông điệp chính.\n9. Không được thêm field ngoài 8 field đã yêu cầu.\n10. JSON phải hợp lệ để hệ thống có thể parse tự động.\n`.trim();\n\n  return {\n    json: {\n      id: data.id ?? null,\n      competitor_id: data.competitorId ?? null,\n      platform,\n      content_id: contentId,\n      title,\n      description,\n      url: data.url ?? null,\n      published_at: data.publishedAt ?? null,\n      created_at: data.createdAt ?? null,\n\n      ai_prompt: aiPrompt\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "dd0d86b8-bd89-4933-9aa6-ba46cd91761c",
+      "name": "04 - Prepare AI Input"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        848,
+        0
+      ],
+      "id": "dc23dad0-9864-44a0-b6d2-54c86c1eb55f",
+      "name": "05 - AI Content Analysis",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiItems = $input.all();\nconst originalItems = $('04 - Prepare AI Input').all();\n\nif (aiItems.length !== originalItems.length) {\n  throw new Error(\n    `Số lượng item không khớp: AI=${aiItems.length}, Original=${originalItems.length}`\n  );\n}\n\nfunction parseAIResult(value) {\n  // Trường hợp n8n đã parse JSON thành object\n  if (value && typeof value === 'object') {\n    return value;\n  }\n\n  // Trường hợp AI trả JSON dưới dạng string\n  if (typeof value === 'string') {\n    let text = value.trim();\n\n    // Loại bỏ markdown code fence nếu AI vẫn trả về\n    text = text\n      .replace(/^```json\\s*/i, '')\n      .replace(/^```\\s*/i, '')\n      .replace(/\\s*```$/i, '')\n      .trim();\n\n    try {\n      return JSON.parse(text);\n    } catch (error) {\n      throw new Error(\n        `AI trả về JSON không hợp lệ: ${text.substring(0, 300)}`\n      );\n    }\n  }\n\n  throw new Error('Không tìm thấy nội dung AI để parse');\n}\n\nconst output = [];\n\nfor (let i = 0; i < aiItems.length; i++) {\n  const ai = aiItems[i].json;\n  const original = originalItems[i].json;\n\n  const response = ai.output?.[0];\n  const content = response?.content?.[0];\n\n  if (!content) {\n    throw new Error(\n      `Không tìm thấy AI content tại index ${i}`\n    );\n  }\n\n  const rawText = content.text;\n\n  const analysis = parseAIResult(rawText);\n\n  output.push({\n    json: {\n      id: original.id ?? null,\n      competitor_id: original.competitor_id ?? null,\n      platform: original.platform ?? null,\n      content_id: original.content_id ?? null,\n      title: original.title ?? \"\",\n      description: original.description ?? \"\",\n      url: original.url ?? null,\n      published_at: original.published_at ?? null,\n\n      topic: analysis.topic ?? null,\n      category: analysis.category ?? null,\n      content_type: analysis.content_type ?? null,\n      sentiment: analysis.sentiment ?? null,\n      keywords: Array.isArray(analysis.keywords)\n        ? analysis.keywords\n        : [],\n      summary: analysis.summary ?? null,\n      target_audience: analysis.target_audience ?? null,\n      key_message: analysis.key_message ?? null\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "8e17c5f6-b09c-4dff-9688-757fdae7164c",
+      "name": "06 - Parse AI Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst requiredFields = [\n  'content_id',\n  'topic',\n  'category',\n  'content_type',\n  'sentiment',\n  'keywords',\n  'summary',\n  'target_audience',\n  'key_message'\n];\n\nconst validSentiments = ['positive', 'neutral', 'negative'];\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  for (const field of requiredFields) {\n    if (\n      data[field] === null ||\n      data[field] === undefined ||\n      data[field] === ''\n    ) {\n      errors.push(`${field} bị thiếu`);\n    }\n  }\n\n  if (\n    data.keywords !== null &&\n    data.keywords !== undefined &&\n    !Array.isArray(data.keywords)\n  ) {\n    errors.push('keywords phải là array');\n  }\n\n  if (\n    data.sentiment &&\n    !validSentiments.includes(data.sentiment)\n  ) {\n    errors.push(\n      `sentiment không hợp lệ: ${data.sentiment}`\n    );\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "85b516ce-39d9-48a1-ba32-d99c2f2e50ab",
+      "name": "07 - Validate AI Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "47d5ffe8-4d6e-4256-b737-f95d5e318268",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "cff41e58-20d3-4638-87e9-74708f2e96a7",
+      "name": "08 - IF AI Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      content_id: data.content_id ?? null,\n      title: data.title ?? \"\",\n      platform: data.platform ?? null,\n\n      processing_status: \"ai_invalid\",\n\n      validation_errors: Array.isArray(data.validation_errors)\n        ? data.validation_errors\n        : [\"AI output không hợp lệ\"]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        96
+      ],
+      "id": "888967be-0e4d-4bcb-a131-993823dc0536",
+      "name": "09 - Handle AI Error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "={{$json.platform}}"
+            },
+            {
+              "name": "content_id",
+              "value": "={{$json.content_id}}"
+            },
+            {
+              "name": "topic",
+              "value": "={{$json.topic}}"
+            },
+            {
+              "name": "category",
+              "value": "={{$json.category}}"
+            },
+            {
+              "name": "content_type",
+              "value": "={{$json.content_type}}"
+            },
+            {
+              "name": "sentiment",
+              "value": "={{$json.sentiment}}"
+            },
+            {
+              "name": "keywords",
+              "value": "={{$json.keywords}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "target_audience",
+              "value": "={{$json.target_audience}}"
+            },
+            {
+              "name": "key_message",
+              "value": "={{$json.key_message}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1888,
+        -96
+      ],
+      "id": "74db8632-93eb-4e3c-a015-d2599f8405c9",
+      "name": "10 - Save AI Analysis"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF03": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Clean Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Clean Contents": {
+      "main": [
+        [
+          {
+            "node": "03 - Split Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Split Contents": {
+      "main": [
+        [
+          {
+            "node": "04 - Prepare AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Prepare AI Input": {
+      "main": [
+        [
+          {
+            "node": "05 - AI Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - AI Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "06 - Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "07 - Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "08 - IF AI Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - IF AI Valid": {
+      "main": [
+        [
+          {
+            "node": "10 - Save AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "09 - Handle AI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f28e8fb0-0048-4b20-836d-02f52b5b515c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+  },
+  "nodeGroups": [],
+  "id": "5OmwHnAlJhZh25Oo",
+  "tags": []
+}

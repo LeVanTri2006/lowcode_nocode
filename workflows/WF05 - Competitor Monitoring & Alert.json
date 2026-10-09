@@ -1,0 +1,338 @@
+{
+  "name": "WF05 - Competitor Monitoring & Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0fa0a7af-244a-42ea-b684-4fd391a4fa05",
+      "name": "01 - Start WF05"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/monitoring-data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "60d20f0d-0858-46cf-be72-1a3d3a952aeb",
+      "name": "02 - Get Monitoring Data"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "7aabe517-62aa-4142-aec0-2dc5a7374a07",
+      "name": "03 - Split Monitoring Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  const metrics = Array.isArray(data.metrics) ? data.metrics : [];\n\n  const latest = metrics[0] ?? {};\n  const previous = metrics[1] ?? {};\n\n  const latestViews = Number(latest.views ?? 0);\n  const previousViews = Number(previous.views ?? 0);\n\n  const latestLikes = Number(latest.likes ?? 0);\n  const previousLikes = Number(previous.likes ?? 0);\n\n  const latestComments = Number(latest.comments ?? 0);\n  const previousComments = Number(previous.comments ?? 0);\n\n  // Tính mức thay đổi\n  const viewsChange = latestViews - previousViews;\n  const likesChange = latestLikes - previousLikes;\n  const commentsChange = latestComments - previousComments;\n\n  // Tính tỷ lệ tăng trưởng (%)\n  const viewsGrowthRate =\n    previousViews > 0\n      ? Number(((viewsChange / previousViews) * 100).toFixed(2))\n      : 0;\n\n  const likesGrowthRate =\n    previousLikes > 0\n      ? Number(((likesChange / previousLikes) * 100).toFixed(2))\n      : 0;\n\n  const commentsGrowthRate =\n    previousComments > 0\n      ? Number(((commentsChange / previousComments) * 100).toFixed(2))\n      : 0;\n\n  output.push({\n    json: {\n      // ID nội bộ của social_contents\n      // Dùng cho POST /api/monitoring-alerts\n      socialContentId: data.socialContentId ?? null,\n\n      // ID video YouTube\n      contentId: data.contentId ?? null,\n\n      // Thông tin competitor\n      competitorId: data.competitorId ?? null,\n      competitorName: data.competitorName ?? \"\",\n\n      // Platform\n      platform: data.platform ?? null,\n\n      // Nội dung\n      title: data.title ?? \"\",\n\n      // Views\n      latest_views: latestViews,\n      previous_views: previousViews,\n      views_change: viewsChange,\n      views_growth_rate: viewsGrowthRate,\n\n      // Likes\n      latest_likes: latestLikes,\n      previous_likes: previousLikes,\n      likes_change: likesChange,\n      likes_growth_rate: likesGrowthRate,\n\n      // Comments\n      latest_comments: latestComments,\n      previous_comments: previousComments,\n      comments_change: commentsChange,\n      comments_growth_rate: commentsGrowthRate,\n\n      // Thời gian snapshot\n      latest_captured_at: latest.capturedAt ?? null,\n      previous_captured_at: previous.capturedAt ?? null,\n    },\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "79d4d576-a05d-4b9d-a0b6-d31314b1d519",
+      "name": "04 - Calculate Monitoring Changes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst output = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const alerts = [];\n\n  // Ngưỡng cảnh báo\n  const VIEW_GROWTH_THRESHOLD = 1.0;      // >= 1%\n  const LIKE_GROWTH_THRESHOLD = 1.0;      // >= 1%\n  const COMMENT_GROWTH_THRESHOLD = 1.0;   // >= 1%\n\n  if (Number(data.views_growth_rate ?? 0) >= VIEW_GROWTH_THRESHOLD) {\n    alerts.push({\n      type: \"views_growth\",\n      message: `Views tăng ${data.views_growth_rate}%`\n    });\n  }\n\n  if (Number(data.likes_growth_rate ?? 0) >= LIKE_GROWTH_THRESHOLD) {\n    alerts.push({\n      type: \"likes_growth\",\n      message: `Likes tăng ${data.likes_growth_rate}%`\n    });\n  }\n\n  if (Number(data.comments_growth_rate ?? 0) >= COMMENT_GROWTH_THRESHOLD) {\n    alerts.push({\n      type: \"comments_growth\",\n      message: `Comments tăng ${data.comments_growth_rate}%`\n    });\n  }\n\n  output.push({\n    json: {\n      ...data,\n\n      alert_triggered: alerts.length > 0,\n      alert_count: alerts.length,\n      alerts\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "8ce520c6-6fa5-4476-9cfa-99fef474094f",
+      "name": "05 - Detect Alert Conditions"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  if (!data.contentId) {\n    errors.push(\"contentId không hợp lệ\");\n  }\n\n  if (data.competitorId == null) {\n    errors.push(\"competitorId không hợp lệ\");\n  }\n\n  if (!data.competitorName) {\n    errors.push(\"competitorName không hợp lệ\");\n  }\n\n  if (!data.platform) {\n    errors.push(\"platform không hợp lệ\");\n  }\n\n  if (data.latest_views == null || Number(data.latest_views) < 0) {\n    errors.push(\"latest_views không hợp lệ\");\n  }\n\n  if (data.previous_views == null || Number(data.previous_views) < 0) {\n    errors.push(\"previous_views không hợp lệ\");\n  }\n\n  if (data.views_change == null) {\n    errors.push(\"views_change không hợp lệ\");\n  }\n\n  if (\n    data.alert_triggered !== true &&\n    data.alert_triggered !== false\n  ) {\n    errors.push(\"alert_triggered không hợp lệ\");\n  }\n\n  if (\n    data.alert_count == null ||\n    Number(data.alert_count) < 0\n  ) {\n    errors.push(\"alert_count không hợp lệ\");\n  }\n\n  if (!Array.isArray(data.alerts)) {\n    errors.push(\"alerts phải là array\");\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "d34fbdc5-7ac8-45e2-bffb-c49199d41a3d",
+      "name": "06 - Validate Monitoring Result"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "43a3885f-70b5-47b9-9009-6db944953365",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "335936ec-e0e5-45ef-8817-d1291b04cb48",
+      "name": "07 - IF Monitoring Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  return {\n    json: {\n      contentId: data.contentId ?? null,\n      competitorId: data.competitorId ?? null,\n      competitorName: data.competitorName ?? \"\",\n      platform: data.platform ?? null,\n\n      processing_status: \"monitoring_invalid\",\n\n      validation_errors: Array.isArray(data.validation_errors)\n        ? data.validation_errors\n        : [\"Monitoring data không hợp lệ\"]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        96
+      ],
+      "id": "c6fc596c-ee6b-48eb-873e-58cc4299d838",
+      "name": "08 - Handle Monitoring Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2bd3a154-5c30-4c1a-a0f2-ee989e4cfe97",
+              "leftValue": "={{$json.alert_triggered}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        -96
+      ],
+      "id": "fa512ae4-e3f3-4f92-84dd-881f2168d54c",
+      "name": "09 - IF Alert Triggered"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/monitoring-alerts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content_id",
+              "value": "={{$json.socialContentId}}"
+            },
+            {
+              "name": "competitor_id",
+              "value": "={{$json.competitorId}}"
+            },
+            {
+              "name": "platform",
+              "value": "={{$json.platform}}"
+            },
+            {
+              "name": "alert_type",
+              "value": "={{$json.alerts[0].type}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.alerts[0].message}}"
+            },
+            {
+              "name": "views_change",
+              "value": "={{$json.views_change}}"
+            },
+            {
+              "name": "likes_change",
+              "value": "={{$json.likes_change}}"
+            },
+            {
+              "name": "comments_change",
+              "value": "={{$json.comments_change}}"
+            },
+            {
+              "name": "views_growth_rate",
+              "value": "={{$json.views_growth_rate}}"
+            },
+            {
+              "name": "likes_growth_rate",
+              "value": "={{$json.likes_growth_rate}}"
+            },
+            {
+              "name": "comments_growth_rate",
+              "value": "={{$json.comments_growth_rate}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1792,
+        -192
+      ],
+      "id": "d0c6f87b-6b76-473e-9d24-14ed257279a8",
+      "name": "10 - Save Monitoring Alert"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF05": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Monitoring Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Monitoring Data": {
+      "main": [
+        [
+          {
+            "node": "03 - Split Monitoring Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Split Monitoring Data": {
+      "main": [
+        [
+          {
+            "node": "04 - Calculate Monitoring Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Calculate Monitoring Changes": {
+      "main": [
+        [
+          {
+            "node": "05 - Detect Alert Conditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Detect Alert Conditions": {
+      "main": [
+        [
+          {
+            "node": "06 - Validate Monitoring Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Validate Monitoring Result": {
+      "main": [
+        [
+          {
+            "node": "07 - IF Monitoring Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - IF Monitoring Valid": {
+      "main": [
+        [
+          {
+            "node": "09 - IF Alert Triggered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 - Handle Monitoring Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - IF Alert Triggered": {
+      "main": [
+        [
+          {
+            "node": "10 - Save Monitoring Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "75816122-35b3-49f9-82f5-41b2e86a1fb9",
+  "meta": {
+    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+  },
+  "nodeGroups": [],
+  "id": "vl5dfm2p9eN3KgdG",
+  "tags": []
+}
