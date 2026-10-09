@@ -6,7 +6,7 @@ import { dispatchN8nWebhook, N8nWebhookError, validateN8nWebhookConfig } from '.
 import { prisma } from '../prisma/client';
 
 type DispatchWebhook = typeof dispatchWf01Webhook;
-type DispatchWf03Webhook = (url: string, token: string) => Promise<void>;
+type DispatchConfiguredWebhook = (url: string, token: string) => Promise<void>;
 
 export function createWorkflowRunHandler(dispatchWebhook: DispatchWebhook = dispatchWf01Webhook): RequestHandler {
   return async (req: Request, res: Response) => {
@@ -40,6 +40,7 @@ export function createWorkflowRunRouter(dispatchWebhook: DispatchWebhook = dispa
   const router = Router();
   router.post('/wf01/run', requireRole('operator'), createWorkflowRunHandler(dispatchWebhook));
   router.post('/wf03/run', requireRole('operator'), createWf03RunHandler());
+  router.post('/wf04/run', requireRole('operator'), createWf04RunHandler());
   return router;
 }
 
@@ -50,7 +51,7 @@ export function createWf03RunHandler({
   now = Date.now,
 }: {
   countUnanalysed?: () => Promise<number>;
-  dispatchWebhook?: DispatchWf03Webhook;
+  dispatchWebhook?: DispatchConfiguredWebhook;
   cooldownMs?: number;
   now?: () => number;
 } = {}): RequestHandler {
@@ -112,6 +113,81 @@ export function createWf03RunHandler({
         return;
       }
       res.status(500).json({ success: false, code: 'WF03_PENDING_COUNT_FAILED', message: 'Không thể kiểm tra nội dung đang chờ phân tích.' });
+    } finally {
+      activeOperators.delete(username);
+    }
+  };
+}
+
+export function createWf04RunHandler({
+  countEligiblePerformanceData = () => prisma.socialContent.count({ where: { socialMetrics: { some: {} } } }),
+  dispatchWebhook = (url, token) => dispatchN8nWebhook('WF04', url, token),
+  cooldownMs = 30_000,
+  now = Date.now,
+}: {
+  countEligiblePerformanceData?: () => Promise<number>;
+  dispatchWebhook?: DispatchConfiguredWebhook;
+  cooldownMs?: number;
+  now?: () => number;
+} = {}): RequestHandler {
+  const activeOperators = new Set<string>();
+  const lastAcceptedAt = new Map<string, number>();
+
+  return async (req: Request, res: Response) => {
+    if (!hasTrustedOrigin(req.get('origin'), getAllowedOrigins())) {
+      res.status(403).json({ success: false, code: 'ORIGIN_NOT_ALLOWED', message: 'Nguồn yêu cầu không được phép.' });
+      return;
+    }
+    if (!getAuthConfig()) {
+      res.status(503).json({ success: false, code: 'AUTH_NOT_CONFIGURED', message: 'Đăng nhập chưa được cấu hình trên máy chủ.' });
+      return;
+    }
+
+    const username = req.session.authUser?.username;
+    if (!username) {
+      res.status(401).json({ success: false, code: 'AUTH_REQUIRED', message: 'Vui lòng đăng nhập để tiếp tục.' });
+      return;
+    }
+    const timestamp = now();
+    for (const [operator, acceptedAt] of lastAcceptedAt) {
+      if (timestamp - acceptedAt >= cooldownMs) lastAcceptedAt.delete(operator);
+    }
+    if (activeOperators.has(username)) {
+      res.status(409).json({ success: false, code: 'WF04_RUN_REQUEST_ACTIVE', message: 'Yêu cầu phân tích WF04 của bạn đang được gửi.' });
+      return;
+    }
+    const acceptedAt = lastAcceptedAt.get(username);
+    if (acceptedAt !== undefined && timestamp - acceptedAt < cooldownMs) {
+      res.status(429).json({ success: false, code: 'WF04_RUN_COOLDOWN', message: 'WF04 vừa nhận một yêu cầu. Vui lòng đợi trước khi gửi yêu cầu khác.' });
+      return;
+    }
+
+    activeOperators.add(username);
+    try {
+      const eligibleCount = await countEligiblePerformanceData();
+      if (eligibleCount === 0) {
+        res.status(200).json({
+          success: true,
+          data: { status: 'no_work' as const, eligibleCount: 0 },
+          message: 'Chưa có nội dung nào được ghi nhận chỉ số để phân tích hiệu suất.',
+        });
+        return;
+      }
+
+      const configured = validateN8nWebhookConfig('WF04', process.env.N8N_WF04_WEBHOOK_URL, process.env.N8N_WF04_WEBHOOK_TOKEN);
+      await dispatchWebhook(configured.url.toString(), configured.token);
+      lastAcceptedAt.set(username, now());
+      res.status(202).json({
+        success: true,
+        data: { status: 'accepted' as const, eligibleCount },
+        message: 'Đã tiếp nhận yêu cầu chạy WF04. Chưa xác nhận workflow đã hoàn tất hoặc lưu kết quả.',
+      });
+    } catch (error) {
+      if (error instanceof N8nWebhookError) {
+        res.status(error.status).json({ success: false, code: error.code, message: error.message });
+        return;
+      }
+      res.status(500).json({ success: false, code: 'WF04_INPUT_CHECK_FAILED', message: 'Không thể kiểm tra dữ liệu chỉ số cho WF04.' });
     } finally {
       activeOperators.delete(username);
     }

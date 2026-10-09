@@ -1,4 +1,4 @@
-export type N8nWorkflowCode = 'WF01' | 'WF03';
+export type N8nWorkflowCode = 'WF01' | 'WF03' | 'WF04';
 export type N8nWebhookFailure = 'NOT_CONFIGURED' | 'AUTH_REJECTED' | 'HTTP_ERROR' | 'TIMEOUT' | 'CONNECTION_ERROR';
 
 export class N8nWebhookError extends Error {
