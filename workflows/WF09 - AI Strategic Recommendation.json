@@ -1,0 +1,447 @@
+{
+  "name": "WF09 - AI Strategic Recommendation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6930a7d5-bb4a-462c-9a64-15a6770b59e8",
+      "name": "01 - Start WF09",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3120,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/performance-data",
+        "options": {}
+      },
+      "id": "bfecb0dd-56b9-42ee-a4ac-4d8a5d18bd1f",
+      "name": "02 - Get Competitor KPI Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2880,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/monitoring-data",
+        "options": {}
+      },
+      "id": "a897b595-69a3-478e-90f3-8a4b1f85197c",
+      "name": "03 - Get Monitoring Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/trends",
+        "options": {}
+      },
+      "id": "5d4ba9c0-08eb-4f92-b5a4-9b2003a4e3bc",
+      "name": "04 - Get Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/opportunities",
+        "options": {}
+      },
+      "id": "ac3df3a4-9a33-4b8e-b958-2c630cd854b8",
+      "name": "05 - Get Opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/risks",
+        "options": {}
+      },
+      "id": "85b93651-7aaf-4b60-9d9e-b1393156a637",
+      "name": "06 - Get Risks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "options": {}
+      },
+      "id": "78bb4cdd-3bdb-4544-8a1b-b73106205e77",
+      "name": "07 - Get Content Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst perf=rowsOf('02 - Get Competitor KPI Data');\nconst monitoring=rowsOf('03 - Get Monitoring Activity');\nconst trends=rowsOf('04 - Get Trends');\nconst opportunities=rowsOf('05 - Get Opportunities');\nconst risks=rowsOf('06 - Get Risks');\nconst analyses=rowsOf('07 - Get Content Analysis');\nconst byCompetitor=new Map();\nfor(const p of perf){const id=String(competitorId(p)??competitorName(p));if(!byCompetitor.has(id))byCompetitor.set(id,{competitor_id:competitorId(p),competitor_name:competitorName(p),video_count:0,views:0,likes:0,comments:0});const g=byCompetitor.get(id);g.video_count++;g.views+=toNum(p.views);g.likes+=toNum(p.likes);g.comments+=toNum(p.comments);}\nconst kpis=[...byCompetitor.values()].map(g=>({...g,engagement_rate:g.views?Number(((g.likes+g.comments)/g.views*100).toFixed(2)):0}));\nconst alerts=[];\nfor(const row of monitoring){const ms=Array.isArray(row.metrics)?row.metrics:[];const cur=ms[0]??{},prev=ms[1]??{};const calc=(a,b)=>toNum(b)>0?Number(((toNum(a)-toNum(b))/toNum(b)*100).toFixed(2)):0;const v=calc(cur.views,prev.views),l=calc(cur.likes,prev.likes),c=calc(cur.comments,prev.comments);if(v>=1||l>=1||c>=1)alerts.push({competitor:competitorName(row),content_id:row.contentId??row.content_id??null,views_growth_rate:v,likes_growth_rate:l,comments_growth_rate:c});}\nconst topicCounts=new Map();for(const a of analyses){const t=String(a.topic??a.category??'Unknown');topicCounts.set(t,(topicCounts.get(t)||0)+1);}\nconst context={competitor_kpi:kpis.slice(0,30),competitor_alerts:alerts.slice(0,30),trends:trends.slice(0,20),opportunities:opportunities.slice(0,20),risks:risks.slice(0,20),content_analysis_summary:[...topicCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([topic,count])=>({topic,count})),data_counts:{competitors:kpis.length,alerts:alerts.length,trends:trends.length,opportunities:opportunities.length,risks:risks.length,content_analyses:analyses.length}};\nreturn [{json:{context,ai_prompt:`You are a strategic advisor for a social-media competitor analysis system. Synthesize only the facts in CONTEXT; do not invent metrics or evidence. Return one JSON object with keys: title, objective, description, priority (HIGH/MEDIUM/LOW), confidence (0-1), evidence (array of short evidence strings or IDs), target_audience, content_format, focus_topic, reason, expected_impact. Provide actionable strategy answering what to focus on, which audience, what content format/topic, why, and likely impact. If evidence is sparse, explicitly say so and lower confidence. The database strategy fields are title/objective/description/priority/confidence/evidence.\\nCONTEXT:\\n${JSON.stringify(context).slice(0,18000)}`}}];\n"
+      },
+      "id": "7887cefd-07bf-4668-ac53-38dcc40a6ff1",
+      "name": "08 - Build Strategic Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAI(value){if(value&&typeof value==='object')return value;if(typeof value==='string')return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());throw new Error('AI Strategy Agent không trả về JSON.');}\nconst r=$input.first().json;\nconst txt =\n  r.content?.parts?.[0]?.text ??\n  r.output?.[0]?.content?.[0]?.text ??\n  r.output?.[0]?.content?.text ??\n  r.text ??\n  r.message?.content;\nconst a=parseAI(txt);\nconst priority=['HIGH','MEDIUM','LOW'].includes(String(a.priority??'').toUpperCase())?String(a.priority).toUpperCase():'MEDIUM';\nconst baseConfidence=Number(a.confidence);const confidence=Number.isFinite(baseConfidence)?Math.max(0,Math.min(1,baseConfidence)):0.65;\nconst evidence=Array.isArray(a.evidence)?a.evidence.filter(Boolean).slice(0,20):[];\nconst title=String(a.title??'Evidence-Based Competitive Strategy');\nconst objective=String(a.objective??'');const description=String(a.description??'');\nreturn [{json:{title,objective,description,priority,ai_confidence:confidence,evidence,target_audience:String(a.target_audience??''),content_format:String(a.content_format??''),focus_topic:String(a.focus_topic??''),reason:String(a.reason??''),expected_impact:String(a.expected_impact??''),is_valid:Boolean(title&&objective&&description&&evidence.length>0)}}];"
+      },
+      "id": "f3161bd6-7d7e-433e-8423-172cc90d9e8b",
+      "name": "10 - Parse Structured Strategy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out=[];for(const item of $input.all()){const d=item.json;const errors=[];if(!d.title)errors.push('title is required');if(!d.objective)errors.push('objective is required');if(!d.description)errors.push('description is required');if(!['HIGH','MEDIUM','LOW'].includes(d.priority))errors.push('priority invalid');if(!Array.isArray(d.evidence))errors.push('evidence must be an array');out.push({json:{...d,is_valid:errors.length===0,validation_errors:errors}});}return out;"
+      },
+      "id": "2e6689e3-a2d2-40ef-8dd0-3a64d8c0fbea",
+      "name": "11 - Validate Strategy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item=>{const d=item.json;const evidenceCount=Array.isArray(d.evidence)?d.evidence.length:0;const evidenceFactor=Math.min(1,evidenceCount/5);const confidence=Number(Math.max(0,Math.min(1,(Number(d.ai_confidence??0.65)*0.8)+(evidenceFactor*0.2))).toFixed(2));return {json:{...d,confidence,created_at:new Date().toISOString()}};});"
+      },
+      "id": "a33f672d-53b0-4e97-8d21-33cb36a33c0a",
+      "name": "12 - Calculate Confidence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "edc930d3-0975-4b55-9805-0592ec98802a",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c669d726-078f-47cc-a84d-d00e7c26f9cf",
+      "name": "13 - IF Strategy Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -240,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/strategies",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "objective",
+              "value": "={{$json.objective}}"
+            },
+            {
+              "name": "description",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$json.priority}}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{$json.confidence}}"
+            },
+            {
+              "name": "evidence",
+              "value": "={{$json.evidence}}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{$json.created_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a9ccc626-398b-4656-b472-984a5bae4df8",
+      "name": "14 - Save Strategy to Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item=>({json:{processing_status:'strategy_invalid',validation_errors:item.json.validation_errors??[],title:item.json.title??null}}));"
+      },
+      "id": "8a993d45-a91d-41e0-984f-b74c3c1c739f",
+      "name": "15 - Handle Invalid Strategy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.6-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.6-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        80
+      ],
+      "id": "447895df-e854-4462-8f7a-171b8cdfa0b1",
+      "name": "09 - AI Strategy Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3m4Vw2MJmEPypNsI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF09": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitor KPI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Competitor KPI Data": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Monitoring Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Monitoring Activity": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Trends": {
+      "main": [
+        [
+          {
+            "node": "05 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Get Opportunities": {
+      "main": [
+        [
+          {
+            "node": "06 - Get Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Get Risks": {
+      "main": [
+        [
+          {
+            "node": "07 - Get Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Get Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "08 - Build Strategic Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Build Strategic Context": {
+      "main": [
+        [
+          {
+            "node": "09 - AI Strategy Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Parse Structured Strategy": {
+      "main": [
+        [
+          {
+            "node": "11 - Validate Strategy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - Validate Strategy": {
+      "main": [
+        [
+          {
+            "node": "12 - Calculate Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Calculate Confidence": {
+      "main": [
+        [
+          {
+            "node": "13 - IF Strategy Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - IF Strategy Valid": {
+      "main": [
+        [
+          {
+            "node": "14 - Save Strategy to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "15 - Handle Invalid Strategy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - AI Strategy Agent": {
+      "main": [
+        [
+          {
+            "node": "10 - Parse Structured Strategy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c5ef140d-415b-41a0-bdec-be3aa92888d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+  },
+  "nodeGroups": [],
+  "id": "GjkJFAQon1nQPwRP",
+  "tags": []
+}

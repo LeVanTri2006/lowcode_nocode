@@ -1,0 +1,411 @@
+{
+  "name": "WF10 - Evidence-Based Strategy Report",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "72229761-65f3-48cc-9c9d-5dcbdd280738",
+      "name": "01 - Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "7eb8ee84-b65d-4a22-b92a-c4d97fcf05b7",
+      "name": "01B - Daily Schedule (08:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/performance-data",
+        "options": {}
+      },
+      "id": "82ca93bc-332c-47d1-8be2-f6df369273d6",
+      "name": "02 - Get Competitor KPI Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/trends",
+        "options": {}
+      },
+      "id": "5264c5c0-611e-440b-b683-2293771332b9",
+      "name": "03 - Get Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/monitoring-data",
+        "options": {}
+      },
+      "id": "609e0e37-a7fc-4060-9b26-95c03fc547c9",
+      "name": "04 - Get Alerts and Monitoring Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/opportunities",
+        "options": {}
+      },
+      "id": "aff569eb-ea83-4226-9ed9-852cf6c3507b",
+      "name": "05 - Get Opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/risks",
+        "options": {}
+      },
+      "id": "d62c8848-1709-404c-b4e5-fb2f10d00e3c",
+      "name": "06 - Get Risks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/strategies",
+        "options": {}
+      },
+      "id": "c592e3da-1ea3-4752-a4ca-f08b10ccec8a",
+      "name": "07 - Get Strategies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1440,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "options": {}
+      },
+      "id": "fe52c918-b240-4300-918d-dc5e7b944518",
+      "name": "08 - Get Content Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst perf=rowsOf('02 - Get Competitor KPI Data');\nconst trends=rowsOf('03 - Get Trends');\nconst monitoring=rowsOf('04 - Get Alerts and Monitoring Data');\nconst opportunities=rowsOf('05 - Get Opportunities');\nconst risks=rowsOf('06 - Get Risks');\nconst strategies=rowsOf('07 - Get Strategies');\nconst analyses=rowsOf('08 - Get Content Analysis');\nconst groups=new Map();\nfor(const p of perf){const key=String(competitorId(p)??competitorName(p));if(!groups.has(key))groups.set(key,{competitor_id:competitorId(p),competitor_name:competitorName(p),platform:p.platform??'unknown',content_count:0,total_views:0,total_likes:0,total_comments:0});const g=groups.get(key);g.content_count++;g.total_views+=toNum(p.views);g.total_likes+=toNum(p.likes);g.total_comments+=toNum(p.comments);}\nconst kpis=[...groups.values()].map(g=>({...g,engagement_rate:g.total_views?Number(((g.total_likes+g.total_comments)/g.total_views*100).toFixed(2)):0}));\nconst alerts=[];\nfor(const row of monitoring){const ms=Array.isArray(row.metrics)?row.metrics:[];const cur=ms[0]??{},prev=ms[1]??{};const pct=(a,b)=>toNum(b)>0?Number(((toNum(a)-toNum(b))/toNum(b)*100).toFixed(2)):0;const v=pct(cur.views,prev.views),l=pct(cur.likes,prev.likes),c=pct(cur.comments,prev.comments);if(v>=1||l>=1||c>=1)alerts.push({competitor:competitorName(row),content_id:row.contentId??row.content_id??null,views_growth_rate:v,likes_growth_rate:l,comments_growth_rate:c});}\nconst topics=new Map();for(const a of analyses){const t=String(a.topic??a.category??'Unknown');topics.set(t,(topics.get(t)||0)+1);}\nconst now=new Date();const start=new Date(now.getTime()-7*24*60*60*1000);\nconst period={from:start.toISOString().slice(0,10),to:now.toISOString().slice(0,10)};\nconst context={period,competitor_overview:kpis.map(k=>({competitor_id:k.competitor_id,competitor_name:k.competitor_name,platform:k.platform,content_count:k.content_count})),competitor_performance:kpis,trends:trends.slice(0,25),alerts:alerts.slice(0,30),opportunities:opportunities.slice(0,20),risks:risks.slice(0,20),strategies:strategies.slice(0,20),content_topics:[...topics.entries()].sort((a,b)=>b[1]-a[1]).slice(0,20).map(([topic,count])=>({topic,count})),data_counts:{competitors:kpis.length,contents:perf.length,trends:trends.length,alerts:alerts.length,opportunities:opportunities.length,risks:risks.length,strategies:strategies.length,content_analyses:analyses.length}};\nreturn [{json:{context,ai_prompt:`You are an executive analyst producing an evidence-based social media competitor strategy report. Use ONLY the provided context. Do not invent data or claim records exist if a count is zero. Return one valid JSON object with keys: executive_summary (string), competitor_overview (array), competitor_performance (array), top_trends (array), alerts (array), opportunities (array), risks (array), strategic_recommendations (array), conclusion (string), evidence_summary (array). Include period ${period.from} to ${period.to}. The report should be readable and concise, state limitations when data is missing, and connect recommendations to supplied evidence.\\nCONTEXT:\\n${JSON.stringify(context).slice(0,20000)}`}}];\n"
+      },
+      "id": "bcbe152d-9fb8-4d4b-9985-9344338fe849",
+      "name": "09 - Build Report Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAI(value){if(value&&typeof value==='object')return value;if(typeof value==='string')return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());throw new Error('AI Report Generator không trả về JSON.');}\nconst r=$input.first().json;\nconst txt =\n  r.content?.parts?.[0]?.text ??\n  r.output?.[0]?.content?.[0]?.text ??\n  r.output?.[0]?.content?.text ??\n  r.text ??\n  r.message?.content;\nconst a=parseAI(txt);const context=$('09 - Build Report Context').first().json.context;const period=context.period;\nconst report={report_type:'strategic',title:`AI Competitive Analysis Report (${period.from} - ${period.to})`,period,executive_summary:String(a.executive_summary??'Chưa đủ dữ liệu để tạo Executive Summary.'),competitor_overview:Array.isArray(a.competitor_overview)?a.competitor_overview:context.competitor_overview,competitor_performance:Array.isArray(a.competitor_performance)?a.competitor_performance:context.competitor_performance,top_trends:Array.isArray(a.top_trends)?a.top_trends:context.trends,alerts:Array.isArray(a.alerts)?a.alerts:context.alerts,opportunities:Array.isArray(a.opportunities)?a.opportunities:context.opportunities,risks:Array.isArray(a.risks)?a.risks:context.risks,strategic_recommendations:Array.isArray(a.strategic_recommendations)?a.strategic_recommendations:context.strategies,conclusion:String(a.conclusion??''),evidence_summary:Array.isArray(a.evidence_summary)?a.evidence_summary:[],data_counts:context.data_counts,generated_at:new Date().toISOString()};\nreturn [{json:report}];"
+      },
+      "id": "2b2885d2-3f63-4392-91e2-e15bde8e71d5",
+      "name": "11 - Parse Structured Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/reports",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "report_type",
+              "value": "={{$json.report_type}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "executive_summary",
+              "value": "={{$json.executive_summary}}"
+            },
+            {
+              "name": "period",
+              "value": "={{JSON.stringify($json.period)}}"
+            },
+            {
+              "name": "report_data",
+              "value": "={{JSON.stringify($json)}}"
+            },
+            {
+              "name": "generated_at",
+              "value": "={{$json.generated_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c332c41d-7fc1-4ec2-9f71-48e1366b6b12",
+      "name": "12 - Save Report (confirm POST /api/reports exists)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2624,
+        64
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report=$('11 - Parse Structured Report').first().json;const save=$input.first()?.json??{};const hasError=Boolean(save.error||save.statusCode>=400||save.status==='error');return [{json:{...report,save_status:hasError?'not_saved_check_backend_route':'request_succeeded',save_response:save}}];"
+      },
+      "id": "99c085c4-a635-45ce-847b-e13f24f41592",
+      "name": "13 - Show Report and Save Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2864,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2144,
+        64
+      ],
+      "id": "e2ad25ac-2ed0-4d5f-b9f1-cff73db30631",
+      "name": "10 - AI Report Generator",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3m4Vw2MJmEPypNsI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitor KPI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01B - Daily Schedule (08:00)": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitor KPI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Competitor KPI Data": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Trends": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Alerts and Monitoring Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Alerts and Monitoring Data": {
+      "main": [
+        [
+          {
+            "node": "05 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Get Opportunities": {
+      "main": [
+        [
+          {
+            "node": "06 - Get Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Get Risks": {
+      "main": [
+        [
+          {
+            "node": "07 - Get Strategies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Get Strategies": {
+      "main": [
+        [
+          {
+            "node": "08 - Get Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Get Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "09 - Build Report Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Build Report Context": {
+      "main": [
+        [
+          {
+            "node": "10 - AI Report Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - Parse Structured Report": {
+      "main": [
+        [
+          {
+            "node": "12 - Save Report (confirm POST /api/reports exists)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Save Report (confirm POST /api/reports exists)": {
+      "main": [
+        [
+          {
+            "node": "13 - Show Report and Save Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - AI Report Generator": {
+      "main": [
+        [
+          {
+            "node": "11 - Parse Structured Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6514e99c-c511-4fda-9326-04081a2e40d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+  },
+  "nodeGroups": [],
+  "id": "hPHSXcCgZwPxAIZd",
+  "tags": []
+}

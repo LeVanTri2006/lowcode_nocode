@@ -1,0 +1,322 @@
+{
+  "name": "WF08 - Competitive Risk Detection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "19451624-3ae1-4ce9-92cb-aad8e4dbb0f8",
+      "name": "01 - Start WF08",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/performance-data",
+        "options": {}
+      },
+      "id": "412c092e-041f-463e-90cb-0daf78790559",
+      "name": "02 - Get Performance KPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/monitoring-data",
+        "options": {}
+      },
+      "id": "42bf7df7-2a9f-4648-8ea1-d76ad1e93ab1",
+      "name": "03 - Get Monitoring Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1440,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "options": {}
+      },
+      "id": "661f773c-74e8-435e-9832-fcfb5a8fa0d6",
+      "name": "04 - Get Content Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst performance = rowsOf('02 - Get Performance KPI');\nconst activity = rowsOf('03 - Get Monitoring Activity');\nconst analyses = rowsOf('04 - Get Content Analysis');\nconst contentTopic = new Map();\nfor (const a of analyses) contentTopic.set(String(a.content_id ?? a.contentId ?? a.id ?? ''), String(a.topic ?? a.category ?? 'Unknown topic'));\nconst groups = new Map();\nfunction ensure(id, name, platform) {\n const key = String(id ?? name ?? 'unknown');\n if (!groups.has(key)) groups.set(key,{competitor_id:id ?? null,competitor_name:name ?? 'Unknown competitor',platform:platform ?? 'unknown',video_count:0,total_views:0,total_likes:0,total_comments:0,total_engagement:0,activity_count:0,view_spikes:[],like_spikes:[],comment_spikes:[],topics:new Map(),evidence:[]});\n return groups.get(key);\n}\nfor (const p of performance) {\n const id=competitorId(p), name=competitorName(p), g=ensure(id,name,p.platform);\n g.video_count++;\n g.total_views+=toNum(p.views); g.total_likes+=toNum(p.likes); g.total_comments+=toNum(p.comments);\n const cid=contentId(p); if(cid) g.evidence.push(cid);\n const topic=contentTopic.get(cid); if(topic) g.topics.set(topic,(g.topics.get(topic)||0)+1);\n}\nfor (const a of activity) {\n const id=competitorId(a), name=competitorName(a), g=ensure(id,name,a.platform);\n const metrics=Array.isArray(a.metrics)?a.metrics:[];\n const latest=metrics[0]??{}, previous=metrics[1]??{};\n const pct=(cur,prev)=>toNum(prev)>0?Number(((toNum(cur)-toNum(prev))/toNum(prev)*100).toFixed(2)):(toNum(cur)>0?null:0);\n const v=pct(latest.views,previous.views), l=pct(latest.likes,previous.likes), c=pct(latest.comments,previous.comments);\n g.activity_count++;\n if(v!==null && v>=100) g.view_spikes.push({content_id:a.contentId??a.content_id, growth_rate:v});\n if(l!==null && l>=100) g.like_spikes.push({content_id:a.contentId??a.content_id, growth_rate:l});\n if(c!==null && c>=100) g.comment_spikes.push({content_id:a.contentId??a.content_id, growth_rate:c});\n const cid=String(a.contentId??a.content_id??''); const topic=contentTopic.get(cid); if(topic) g.topics.set(topic,(g.topics.get(topic)||0)+1);\n if(cid) g.evidence.push(cid);\n}\nif (!groups.size) throw new Error('Không có KPI hoặc activity data. Hãy chạy WF01-WF05 trước.');\nreturn [...groups.values()].map(g=>{\n const er=g.total_views>0?Number(((g.total_likes+g.total_comments)/g.total_views*100).toFixed(2)):0;\n const topTopics=[...g.topics.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([topic,count])=>({topic,count}));\n const indicators=[];\n if(g.video_count>=10) indicators.push('high_content_volume');\n if(g.view_spikes.length) indicators.push('views_spike_100_percent_or_more');\n if(g.like_spikes.length) indicators.push('likes_spike_100_percent_or_more');\n if(g.comment_spikes.length) indicators.push('comments_spike_100_percent_or_more');\n return {json:{competitor_id:g.competitor_id,competitor_name:g.competitor_name,platform:g.platform,video_count:g.video_count,total_views:g.total_views,total_likes:g.total_likes,total_comments:g.total_comments,engagement_rate:er,activity_count:g.activity_count,view_spikes:g.view_spikes,like_spikes:g.like_spikes,comment_spikes:g.comment_spikes,top_topics:topTopics,risk_indicators:indicators,evidence:[...new Set(g.evidence)].slice(0,12),ai_prompt:`You are an evidence-based competitive risk analyst. Determine whether this competitor presents a material competitive threat based only on the supplied evidence. Consider rapid content expansion, a topic shift, strong engagement changes and viral-like activity. Return one JSON object with keys: has_risk (boolean), title (short risk title), severity (HIGH/MEDIUM/LOW), score (integer 0-100), reason (evidence-based explanation). Do not exaggerate; with weak or missing history, lower the score and say baseline is limited.\\nDATA:\\n${JSON.stringify({competitor_id:g.competitor_id,competitor_name:g.competitor_name,platform:g.platform,video_count:g.video_count,total_views:g.total_views,total_likes:g.total_likes,total_comments:g.total_comments,engagement_rate:er,activity_count:g.activity_count,view_spikes:g.view_spikes,like_spikes:g.like_spikes,comment_spikes:g.comment_spikes,top_topics:topTopics,risk_indicators:indicators,evidence:[...new Set(g.evidence)].slice(0,12)})}`}};\n});\n"
+      },
+      "id": "fdc4c3d8-5c1f-47da-8a11-4a016f0c693c",
+      "name": "05 - Build Risk Indicators",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAI(value) {\n  if (value && typeof value === 'object') return value;\n\n  if (typeof value === 'string') {\n    const cleaned = value\n      .trim()\n      .replace(/^```json\\s*/i, '')\n      .replace(/^```\\s*/i, '')\n      .replace(/\\s*```$/i, '')\n      .trim();\n\n    return JSON.parse(cleaned);\n  }\n\n  throw new Error('AI Risk Analysis không trả về JSON hợp lệ.');\n}\n\nconst aiItems = $input.all();\nconst bases = $('05 - Build Risk Indicators').all();\n\nreturn aiItems.map((item, i) => {\n  const b = bases[i]?.json;\n\n  if (!b) {\n    throw new Error(`Thiếu risk context ${i}`);\n  }\n\n  const r = item.json;\n\n  const txt =\n    r.content?.parts?.[0]?.text ??\n    r.output?.[0]?.content?.[0]?.text ??\n    r.output?.[0]?.content?.text ??\n    r.text ??\n    r.message?.content;\n\n  const a = parseAI(txt);\n\n  const score = Math.round(\n    Math.max(0, Math.min(100, Number(a.score ?? 0)))\n  );\n\n  const severity = ['HIGH', 'MEDIUM', 'LOW'].includes(\n    String(a.severity ?? '').toUpperCase()\n  )\n    ? String(a.severity).toUpperCase()\n    : score >= 80\n      ? 'HIGH'\n      : score >= 60\n        ? 'MEDIUM'\n        : 'LOW';\n\n  return {\n    json: {\n      title: String(\n        a.title ?? `${b.competitor_name} Competitive Risk`\n      ),\n      score,\n      severity,\n      reason: String(\n        a.reason ?? 'Đánh giá từ KPI và hoạt động đối thủ.'\n      ),\n      evidence: b.evidence,\n      competitor_id: b.competitor_id,\n      competitor_name: b.competitor_name,\n      created_at: new Date().toISOString(),\n      has_risk: a.has_risk === true && score >= 50\n    }\n  };\n});"
+      },
+      "id": "3b1661e0-4af3-4d36-b25d-908f8f4586d9",
+      "name": "07 - Parse and Score Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "816bbe2c-cba3-4346-a329-575cb4ef041a",
+              "leftValue": "={{$json.has_risk}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aa79dba6-359b-4328-8f72-cf8e4232a14e",
+      "name": "08 - IF Risk Detected",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/risks",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "score",
+              "value": "={{$json.score}}"
+            },
+            {
+              "name": "severity",
+              "value": "={{$json.severity}}"
+            },
+            {
+              "name": "reason",
+              "value": "={{$json.reason}}"
+            },
+            {
+              "name": "evidence",
+              "value": "={{$json.evidence}}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{$json.created_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5514effb-527c-4eb1-a8f0-76f4aec2e6a3",
+      "name": "09 - Save Risk to Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -16,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item=>({json:{competitor_name:item.json.competitor_name??null, score:item.json.score??0, processing_status:'no_material_risk', reason:item.json.reason??'No material risk found from available evidence.'}}));"
+      },
+      "id": "8bb84b20-2968-4288-88a0-c6b74ff9fcb4",
+      "name": "10 - No Material Risk Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.7-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.7-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        80
+      ],
+      "id": "358231fa-4a27-442c-a9dc-d322bba301d2",
+      "name": "06 - AI Risk Analysis",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3m4Vw2MJmEPypNsI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF08": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Performance KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Performance KPI": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Monitoring Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Monitoring Activity": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "05 - Build Risk Indicators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Build Risk Indicators": {
+      "main": [
+        [
+          {
+            "node": "06 - AI Risk Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Parse and Score Risk": {
+      "main": [
+        [
+          {
+            "node": "08 - IF Risk Detected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - IF Risk Detected": {
+      "main": [
+        [
+          {
+            "node": "09 - Save Risk to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10 - No Material Risk Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - AI Risk Analysis": {
+      "main": [
+        [
+          {
+            "node": "07 - Parse and Score Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4b051250-b04f-47d7-85a0-ca366cd1695c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+  },
+  "nodeGroups": [],
+  "id": "H39lyXL8cwGTbrYG",
+  "tags": []
+}

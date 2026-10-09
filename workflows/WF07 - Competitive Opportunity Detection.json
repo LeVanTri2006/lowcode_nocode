@@ -1,0 +1,372 @@
+{
+  "name": "WF07 - Competitive Opportunity Detection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e9248e9d-8a5b-47d8-8abd-29b4f7941cb2",
+      "name": "01 - Start WF07",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/trends",
+        "options": {}
+      },
+      "id": "60eaea70-5a2c-4287-a18c-94fca7b2a65e",
+      "name": "02 - Get Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "options": {}
+      },
+      "id": "39d90d08-98ce-4375-8b89-5094cc080abb",
+      "name": "03 - Get Content Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/social-contents",
+        "options": {}
+      },
+      "id": "26877d5a-d90e-4fce-b569-2e871f3ba55b",
+      "name": "04 - Get Competitor Contents",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/performance-data",
+        "options": {}
+      },
+      "id": "b0548c94-eb0b-464e-af8a-ef6c42f01690",
+      "name": "05 - Get Performance Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1440,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/competitors",
+        "options": {}
+      },
+      "id": "b6af6980-6b89-4563-9440-9c9e581f46cb",
+      "name": "06 - Get Competitors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst trends = rowsOf('02 - Get Trends');\nconst analyses = rowsOf('03 - Get Content Analysis');\nconst contents = rowsOf('04 - Get Competitor Contents');\nconst metrics = rowsOf('05 - Get Performance Data');\nconst competitorRows = rowsOf('06 - Get Competitors');\nif (!trends.length) throw new Error('Chưa có trends. Hãy chạy WF06 thành công trước.');\nconst totalCompetitors = new Set(competitorRows.map(c => String(c.id ?? c.competitor_id ?? c.competitorId ?? c.name ?? '')).filter(Boolean)).size || new Set(contents.map(c => String(competitorId(c) ?? '')).filter(Boolean)).size;\nconst contentById = new Map();\nfor (const c of contents) { if (contentId(c)) contentById.set(contentId(c), c); if (c.id != null) contentById.set(String(c.id), c); }\nconst metricById = new Map(metrics.map(m => [contentId(m), m]));\nconst results = [];\nfor (const trend of trends) {\n  const topic = String(trend.name ?? trend.topic ?? trend.title ?? '').trim();\n  if (!topic) continue;\n  const matched = analyses.filter(a => String(a.topic ?? a.name ?? a.category ?? '').trim().toLowerCase() === topic.toLowerCase());\n  const compSet = new Set();\n  const evidence = [];\n  let views = 0, likes = 0, comments = 0, contentVolume = 0;\n  for (const a of matched) {\n    const aid = String(a.content_id ?? a.contentId ?? a.id ?? '');\n    const c = contentById.get(aid) ?? a;\n    const cid = contentId(c) || aid;\n    if (cid) evidence.push(cid);\n    const comp = competitorId(c) ?? competitorId(a);\n    if (comp != null) compSet.add(String(comp));\n    const m = metricById.get(cid) ?? {};\n    views += toNum(m.views ?? c.views);\n    likes += toNum(m.likes ?? c.likes);\n    comments += toNum(m.comments ?? c.comments);\n    contentVolume++;\n  }\n  const coverageCount = compSet.size;\n  const coveragePercent = totalCompetitors > 0 ? Number((coverageCount / totalCompetitors * 100).toFixed(2)) : null;\n  const engagementRate = views > 0 ? Number(((likes + comments) / views * 100).toFixed(2)) : 0;\n  const coverageStatus = coveragePercent === null ? 'unknown' : coveragePercent < 35 ? 'LOW' : coveragePercent < 65 ? 'MEDIUM' : 'HIGH';\n  const payload = {\n    topic, trend_score: toNum(trend.score), growth_rate: trend.growth_rate ?? null,\n    direction: trend.direction ?? null, content_volume: contentVolume,\n    competitor_coverage_count: coverageCount, total_competitors: totalCompetitors,\n    coverage_percent: coveragePercent, coverage_status: coverageStatus,\n    views, likes, comments, engagement_rate: engagementRate,\n    evidence: [...new Set(evidence)].slice(0, 12), trend_id: trend.id ?? null\n  };\n  results.push({json:{...payload, ai_prompt:`You are an evidence-based competitive opportunity analyst. Identify a content opportunity only when audience demand/trend is meaningfully high and competitor coverage is comparatively low. Do not invent evidence. Return one JSON object with keys: is_opportunity (boolean), title (string), score (integer 0-100), priority (HIGH/MEDIUM/LOW), reason (short explanation), recommended_angle (short actionable angle). A high trend score with low coverage and meaningful engagement should score higher. If coverage is unknown or evidence is insufficient, lower confidence and do not assert facts.\\nDATA:\\n${JSON.stringify(payload)}`}});\n}\nif (!results.length) throw new Error('Không tạo được context từ trends.');\nreturn results;\n"
+      },
+      "id": "fe17a8bf-66f3-434f-8d97-84d178ba58ab",
+      "name": "07 - Build Opportunity Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAI(value) {\n  if (value && typeof value === 'object') return value;\n  if (typeof value === 'string') return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());\n  throw new Error('AI Opportunity Agent không trả về JSON.');\n}\nconst aiItems = $input.all();\nconst baseItems = $('07 - Build Opportunity Context').all();\nreturn aiItems.map((item, i) => {\n  const b = baseItems[i]?.json;\n  if (!b) throw new Error(`Không tìm thấy opportunity context tại index ${i}`);\n  const root = item.json;\n  const txt =\n  root.content?.parts?.[0]?.text ??\n  root.output?.[0]?.content?.[0]?.text ??\n  root.output?.[0]?.content?.text ??\n  root.text ??\n  root.message?.content;\n  const a = parseAI(txt);\n  const score = Math.round(Math.max(0, Math.min(100, Number(a.score ?? 0))));\n  const priority = ['HIGH','MEDIUM','LOW'].includes(String(a.priority ?? '').toUpperCase()) ? String(a.priority).toUpperCase() : (score >= 80 ? 'HIGH' : score >= 60 ? 'MEDIUM' : 'LOW');\n  return {json:{title:String(a.title ?? `${b.topic} Opportunity`), score, priority, reason:String(a.reason ?? 'Đánh giá theo trend, competitor coverage và engagement.'), evidence:[...(b.trend_id != null ? [`trend_${b.trend_id}`] : []), ...b.evidence].slice(0,15), recommended_angle:String(a.recommended_angle ?? ''), topic:b.topic, trend_score:b.trend_score, coverage_status:b.coverage_status, coverage_percent:b.coverage_percent, engagement_rate:b.engagement_rate, created_at:new Date().toISOString(), is_opportunity:a.is_opportunity === true && score >= 50 && b.coverage_status !== 'HIGH'}};\n});"
+      },
+      "id": "6061b0da-cc43-4919-9648-bc277706f3bd",
+      "name": "09 - Parse and Score Opportunity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "12aaabb3-be31-40a1-877e-8cae66b6e463",
+              "leftValue": "={{$json.is_opportunity}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f9922dfe-7513-49c3-aac4-c77ea5699ff2",
+      "name": "10 - IF Opportunity Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -192,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/opportunities",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "score",
+              "value": "={{$json.score}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$json.priority}}"
+            },
+            {
+              "name": "reason",
+              "value": "={{$json.reason}}"
+            },
+            {
+              "name": "evidence",
+              "value": "={{$json.evidence}}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{$json.created_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4ec58e93-5a15-494d-9bd4-a68956013a24",
+      "name": "11 - Save Opportunity to Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        48,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({json:{topic:item.json.topic ?? null, title:item.json.title ?? null, score:item.json.score ?? 0, processing_status:'not_saved_as_opportunity', reason:item.json.reason ?? 'Not enough evidence or competitor coverage is already high.'}}));"
+      },
+      "id": "91135261-ad2a-4a35-916e-a19bb5adb040",
+      "name": "12 - No Opportunity Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.8-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.8-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        80
+      ],
+      "id": "ee0889a8-864e-458e-8ac9-85a12588b08e",
+      "name": "08 - AI Opportunity Agent1",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3m4Vw2MJmEPypNsI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF07": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Trends": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Competitor Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Competitor Contents": {
+      "main": [
+        [
+          {
+            "node": "05 - Get Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Get Performance Data": {
+      "main": [
+        [
+          {
+            "node": "06 - Get Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Get Competitors": {
+      "main": [
+        [
+          {
+            "node": "07 - Build Opportunity Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Build Opportunity Context": {
+      "main": [
+        [
+          {
+            "node": "08 - AI Opportunity Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Parse and Score Opportunity": {
+      "main": [
+        [
+          {
+            "node": "10 - IF Opportunity Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - IF Opportunity Found": {
+      "main": [
+        [
+          {
+            "node": "11 - Save Opportunity to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "12 - No Opportunity Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - AI Opportunity Agent1": {
+      "main": [
+        [
+          {
+            "node": "09 - Parse and Score Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "08f0b2d2-28c2-4072-b2f5-07b44b3ef0e7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+  },
+  "nodeGroups": [],
+  "id": "Ygqkca9F9GkofnYx",
+  "tags": []
+}

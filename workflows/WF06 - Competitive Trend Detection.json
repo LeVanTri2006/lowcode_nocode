@@ -1,0 +1,356 @@
+{
+  "name": "WF06 - Competitive Trend Detection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4075e9fb-f726-4c14-9847-fc1dfc8f546f",
+      "name": "01 - Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "f6ce2a1d-2317-4b49-bb7e-48e965243c30",
+      "name": "01B - Daily Schedule (08:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/social-contents",
+        "options": {}
+      },
+      "id": "7e95f635-1900-49f2-bfd6-d774ef07b7b3",
+      "name": "02 - Get Competitor Contents",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "options": {}
+      },
+      "id": "a55c3504-5771-423f-a6ab-396746aaebc7",
+      "name": "03 - Get Content Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/api/performance-data",
+        "options": {}
+      },
+      "id": "813c218c-13a2-4a84-a846-f15fe1602cea",
+      "name": "04 - Get Performance KPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst contentRows = rowsOf('02 - Get Competitor Contents');\nconst analysisRows = rowsOf('03 - Get Content Analysis');\nconst metricRows = rowsOf('04 - Get Performance KPI');\nif (!analysisRows.length) throw new Error('Không có Content Analysis. Hãy chạy WF03 trước và kiểm tra GET /api/content-analysis.');\n\nconst contentById = new Map();\nfor (const c of contentRows) {\n  const cid = contentId(c);\n  if (cid) contentById.set(cid, c);\n  if (c.id != null) contentById.set(String(c.id), c);\n}\nconst metricsByContent = new Map();\nfor (const m of metricRows) {\n  const cid = contentId(m);\n  if (cid) metricsByContent.set(cid, m);\n}\n\nconst now = Date.now();\nconst day = 24 * 60 * 60 * 1000;\nconst currentStart = now - 7 * day;\nconst previousStart = now - 14 * day;\nconst groups = new Map();\nfor (const a of analysisRows) {\n  const topic = String(a.topic ?? a.name ?? a.category ?? '').trim();\n  if (!topic) continue;\n  const aid = String(a.content_id ?? a.contentId ?? a.video_id ?? a.videoId ?? a.social_content_id ?? a.id ?? '');\n  const c = contentById.get(aid) ?? a;\n  const cid = contentId(c) || aid;\n  const dateValue = c.published_at ?? c.publishedAt ?? c.published_at ?? c.created_at ?? a.published_at ?? a.createdAt;\n  const ts = dateValue ? new Date(dateValue).getTime() : NaN;\n  const period = Number.isFinite(ts) && ts >= currentStart ? 'current' :\n    (Number.isFinite(ts) && ts >= previousStart && ts < currentStart ? 'previous' : 'other');\n  const m = metricsByContent.get(cid) ?? {};\n  if (!groups.has(topic.toLowerCase())) groups.set(topic.toLowerCase(), {\n    name: topic, current_count: 0, previous_count: 0, total_count: 0,\n    total_views: 0, total_likes: 0, total_comments: 0, content_ids: [],\n    competitors: new Set(), current_content_ids: [], previous_content_ids: []\n  });\n  const g = groups.get(topic.toLowerCase());\n  g.total_count++;\n  if (period === 'current') { g.current_count++; g.current_content_ids.push(cid); }\n  if (period === 'previous') { g.previous_count++; g.previous_content_ids.push(cid); }\n  g.total_views += toNum(m.views ?? c.views);\n  g.total_likes += toNum(m.likes ?? c.likes);\n  g.total_comments += toNum(m.comments ?? c.comments);\n  if (cid) g.content_ids.push(cid);\n  const comp = competitorId(c) ?? competitorId(a);\n  if (comp != null) g.competitors.add(String(comp));\n}\nif (!groups.size) throw new Error('Không tìm thấy topic hợp lệ trong Content Analysis.');\nconst out = [];\nfor (const g of groups.values()) {\n  const growth = g.previous_count > 0 ? Number((((g.current_count - g.previous_count) / g.previous_count) * 100).toFixed(2)) : null;\n  const engagementRate = g.total_views > 0 ? Number((((g.total_likes + g.total_comments) / g.total_views) * 100).toFixed(2)) : 0;\n  const growthDirection = growth === null ? (g.current_count > 0 ? 'emerging' : 'insufficient_data') : growth > 0 ? 'up' : growth < 0 ? 'down' : 'stable';\n  const evidence = [...new Set(g.content_ids)].slice(0, 12);\n  const data = {\n    name: g.name, current_count: g.current_count, previous_count: g.previous_count,\n    total_count: g.total_count, growth_rate: growth, direction: growthDirection,\n    competitor_count: g.competitors.size, total_views: g.total_views,\n    engagement_rate: engagementRate, evidence,\n    ai_prompt: `You are an evidence-based social media competitive trend analyst. Analyze ONLY the metrics below. Do not invent facts. Return one JSON object with keys: score (integer 0-100), direction (up/down/stable/emerging/insufficient_data), reason (short explanation), trend_summary (one sentence). The score must consider growth, volume, competitor breadth and engagement; when growth_rate is null, explicitly say the historical baseline is insufficient and do not invent a percentage.\\nDATA:\\n${JSON.stringify({name:g.name,current_count:g.current_count,previous_count:g.previous_count,total_count:g.total_count,growth_rate:growth,direction:growthDirection,competitor_count:g.competitors.size,total_views:g.total_views,engagement_rate:engagementRate,evidence})}`\n  };\n  out.push({json:data});\n}\nreturn out;\n"
+      },
+      "id": "aeb2a600-738d-4af2-9b35-125d7341bc2c",
+      "name": "05 - Aggregate Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAI(value) {\n  if (value && typeof value === 'object') return value;\n  if (typeof value === 'string') {\n    const t = value.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();\n    return JSON.parse(t);\n  }\n  throw new Error('AI Trend Analysis không trả về JSON.');\n}\nconst aiItems = $input.all();\nconst source = $('05 - Aggregate Topics').all();\nreturn aiItems.map((item, i) => {\n  const base = source[i]?.json;\n  if (!base) throw new Error(`Không tìm thấy dữ liệu topic gốc tại vị trí ${i}`);\n  const root = item.json;\n  const txt =\n  root.content?.parts?.[0]?.text ??\n  root.output?.[0]?.content?.[0]?.text ??\n  root.output?.[0]?.content?.text ??\n  root.text ??\n  root.message?.content;\n  const ai = parseAI(txt);\n  const fallback = base.current_count > 0 ? 55 : 30;\n  const score = Math.round(Math.max(0, Math.min(100, Number(ai.score ?? fallback))));\n  return {json: {\n    name: base.name,\n    score,\n    growth_rate: base.growth_rate,\n    direction: String(ai.direction ?? base.direction),\n    reason: String(ai.reason ?? ai.trend_summary ?? 'Phân tích dựa trên số lượng nội dung, mức tăng trưởng và tương tác.'),\n    evidence: base.evidence,\n    detected_at: new Date().toISOString(),\n    current_count: base.current_count,\n    previous_count: base.previous_count,\n    competitor_count: base.competitor_count,\n    engagement_rate: base.engagement_rate,\n    is_valid: Boolean(base.name) && Number.isFinite(score) && Array.isArray(base.evidence)\n  }};\n});"
+      },
+      "id": "90cb4b86-15c7-4d6a-a7e0-27793956d186",
+      "name": "07 - Parse AI and Calculate Trend Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c5446b53-326c-4f11-9e30-387dba17eeb7",
+              "leftValue": "={{$json.is_valid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "348ecb2e-9aa2-459c-9687-d116833f172c",
+      "name": "08 - IF Trend Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1712,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/trends",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{$json.name}}"
+            },
+            {
+              "name": "score",
+              "value": "={{$json.score}}"
+            },
+            {
+              "name": "growth_rate",
+              "value": "={{$json.growth_rate}}"
+            },
+            {
+              "name": "direction",
+              "value": "={{$json.direction}}"
+            },
+            {
+              "name": "reason",
+              "value": "={{$json.reason}}"
+            },
+            {
+              "name": "evidence",
+              "value": "={{$json.evidence}}"
+            },
+            {
+              "name": "detected_at",
+              "value": "={{$json.detected_at}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "72683f59-9ed5-402c-864f-3e8e25994578",
+      "name": "09 - Save Trend to Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1936,
+        -32
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({json:{name:item.json.name ?? null, processing_status:'trend_invalid', reason:item.json.reason ?? 'Trend result failed validation', is_valid:false}}));"
+      },
+      "id": "7ffc949c-fb3a-4aad-bdaf-45cd4a017d01",
+      "name": "10 - Handle Invalid Trend",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1936,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3-flash-preview",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1184,
+        64
+      ],
+      "id": "8ea59d0d-c57f-45b2-9f20-c5a5efefa057",
+      "name": "06 - AI Trend Analysis",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3m4Vw2MJmEPypNsI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitor Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01B - Daily Schedule (08:00)": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitor Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Get Competitor Contents": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Content Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Content Analysis": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Performance KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Performance KPI": {
+      "main": [
+        [
+          {
+            "node": "05 - Aggregate Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Aggregate Topics": {
+      "main": [
+        [
+          {
+            "node": "06 - AI Trend Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Parse AI and Calculate Trend Score": {
+      "main": [
+        [
+          {
+            "node": "08 - IF Trend Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - IF Trend Valid": {
+      "main": [
+        [
+          {
+            "node": "09 - Save Trend to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10 - Handle Invalid Trend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - AI Trend Analysis": {
+      "main": [
+        [
+          {
+            "node": "07 - Parse AI and Calculate Trend Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "22d605a5-3ec8-4e34-92bc-dee3c7dbe436",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+  },
+  "nodeGroups": [],
+  "id": "bKoP6h8WPvCya0SU",
+  "tags": []
+}
