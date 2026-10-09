@@ -12,10 +12,12 @@ import { WF07Page } from '../pages/WF07/WF07Page';
 import { WF08Page } from '../pages/WF08/WF08Page';
 import { WF09Page } from '../pages/WF09/WF09Page';
 import { WF10Page } from '../pages/WF10/WF10Page';
+import { LoginPage } from '../pages/Login/LoginPage';
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/wf01" element={<WF01Page />} />

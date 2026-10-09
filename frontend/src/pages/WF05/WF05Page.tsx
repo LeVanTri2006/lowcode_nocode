@@ -1,91 +1,162 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, Eye, Heart, MessageCircle, X } from 'lucide-react';
+import { Bell, Eye, Heart, MessageCircle, RotateCw, X, ExternalLink, Activity } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { WorkflowExecutionStatus } from '../../components/workflow/WorkflowExecutionStatus';
-import { INITIAL_ALERTS, type AlertItem } from '../../mocks/alerts';
-import { INITIAL_COMPETITORS } from '../../mocks/competitors';
-import { useToast } from '../../components/common/Toast';
+import { useApiResource } from '../../hooks/api/useApiResource';
+import { getMonitoringAlerts, getMonitoringData } from '../../services/api/monitoringApi';
+import type { MonitoringAlert, MonitoringData, MonitoringMetricSnapshot } from '../../types/api';
+import { platformLabel } from '../../utils/platformLabel';
 import './WF05Page.css';
 
-const alertLabels: Record<AlertItem['alertType'], string> = { views_growth: 'Views Growth', likes_growth: 'Likes Growth', comments_growth: 'Comments Growth' };
-const fmtNumber = (value: number) => new Intl.NumberFormat('vi-VN').format(value);
-const fmtDate = (value: string) => {
-  const parts = new Intl.DateTimeFormat('vi-VN', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? '';
-  return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`;
+const EMPTY_ALERTS: MonitoringAlert[] = [];
+const EMPTY_MONITORING: MonitoringData[] = [];
+const alertLabels: Record<string, string> = {
+  views_growth: 'Tăng lượt xem',
+  likes_growth: 'Tăng lượt thích',
+  comments_growth: 'Tăng bình luận',
 };
+const safeNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+const fmtNumber = (value: unknown) => {
+  const number = safeNumber(value);
+  return number === null ? '—' : new Intl.NumberFormat('vi-VN').format(number);
+};
+const fmtStoredRate = (value: unknown) => {
+  const number = safeNumber(value);
+  return number === null ? '—' : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 6 }).format(number);
+};
+const fmtDate = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) return 'Chưa có thời gian';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Thời gian không hợp lệ' : date.toLocaleString('vi-VN');
+};
+const getTypeLabel = (type: string) => alertLabels[type] || type || 'Không rõ loại cảnh báo';
+const displayAlertMessage = (message: string | null | undefined) => {
+  if (!message) return 'Không có thông điệp';
+  return message.replace(/^(Views|Likes|Comments)\s+tăng/i, (_, metric: string) => ({ Views: 'Lượt xem tăng', Likes: 'Lượt thích tăng', Comments: 'Bình luận tăng' }[metric as 'Views' | 'Likes' | 'Comments']));
+};
+const getContentLabel = (alert: MonitoringAlert) => alert.socialContent?.contentId || `ID nội bộ #${alert.contentId}`;
+const getCompetitorLabel = (alert: MonitoringAlert) => alert.competitor?.name || `Đối thủ #${alert.competitorId}`;
+const signed = (value: unknown) => {
+  const number = safeNumber(value);
+  return number === null ? '—' : `${number > 0 ? '+' : ''}${fmtNumber(number)}`;
+};
+const orderedSnapshots = (metrics: MonitoringMetricSnapshot[] | null | undefined) => [...(Array.isArray(metrics) ? metrics : [])]
+  .filter((item) => item && typeof item === 'object')
+  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
 
 export const WF05Page: React.FC = () => {
-  const { showToast } = useToast();
-  const [alerts, setAlerts] = useState<AlertItem[]>(INITIAL_ALERTS);
-  const [selected, setSelected] = useState<AlertItem | null>(null);
+  const monitoringResource = useApiResource(getMonitoringData, []);
+  const alertsResource = useApiResource(getMonitoringAlerts, []);
   const [typeFilter, setTypeFilter] = useState('all');
   const [competitorFilter, setCompetitorFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [selected, setSelected] = useState<MonitoringAlert | null>(null);
+  const [now] = useState(() => Date.now());
 
-  const filtered = useMemo(() => alerts.filter((item) =>
-    (typeFilter === 'all' || item.alertType === typeFilter) &&
-    (competitorFilter === 'all' || item.competitorId === Number(competitorFilter)) &&
-    (statusFilter === 'all' || item.status === statusFilter)), [alerts, typeFilter, competitorFilter, statusFilter]);
-  const counts = { views: alerts.filter((item) => item.alertType === 'views_growth').length, likes: alerts.filter((item) => item.alertType === 'likes_growth').length, comments: alerts.filter((item) => item.alertType === 'comments_growth').length };
-  const daily = Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(Date.UTC(2026, 9, 2 + i)).toISOString().slice(0, 10);
-    return { date: day, label: `${String(2 + i).padStart(2, '0')}/10`, count: alerts.filter((item) => item.createdAt.startsWith(day)).length };
-  });
-  const maxCount = Math.max(1, ...daily.map((item) => item.count));
-  const markHandled = (id: number) => {
-    setAlerts((current) => current.map((item) => item.id === id ? { ...item, status: 'Đã xử lý' } : item));
-    setSelected((current) => current?.id === id ? { ...current, status: 'Đã xử lý' } : current);
-    showToast(`Cảnh báo #${id} đã xử lý.`, 'success');
-  };
-  const competitorName = (id: number) => INITIAL_COMPETITORS.find((item) => item.id === id)?.name ?? `Đối thủ #${id}`;
-  const selectedRate = (item: AlertItem) => item.alertType === 'views_growth' ? item.viewsGrowthRate : item.alertType === 'likes_growth' ? item.likesGrowthRate : item.commentsGrowthRate;
+  const monitoring = monitoringResource.data ?? EMPTY_MONITORING;
+  const alerts = alertsResource.data ?? EMPTY_ALERTS;
+  const alertTypes = useMemo(() => [...new Set(alerts.map((item) => item.alertType).filter(Boolean))].sort(), [alerts]);
+  const competitors = useMemo(() => {
+    const names = new Map<number, string>();
+    monitoring.forEach((item) => names.set(item.competitorId, item.competitorName || `Đối thủ #${item.competitorId}`));
+    alerts.forEach((item) => names.set(item.competitorId, item.competitor?.name || names.get(item.competitorId) || `Đối thủ #${item.competitorId}`));
+    return [...names.entries()].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+  }, [monitoring, alerts]);
+  const filteredAlerts = useMemo(() => [...alerts]
+    .filter((item) => (typeFilter === 'all' || item.alertType === typeFilter) && (competitorFilter === 'all' || item.competitorId === Number(competitorFilter)))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [alerts, typeFilter, competitorFilter]);
+  const filteredMonitoring = useMemo(() => monitoring.filter((item) => competitorFilter === 'all' || item.competitorId === Number(competitorFilter)), [monitoring, competitorFilter]);
+  const counts = useMemo(() => ({
+    views: filteredAlerts.filter((item) => item.alertType === 'views_growth').length,
+    likes: filteredAlerts.filter((item) => item.alertType === 'likes_growth').length,
+    comments: filteredAlerts.filter((item) => item.alertType === 'comments_growth').length,
+  }), [filteredAlerts]);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - 6 + index);
+    const key = date.toISOString().slice(0, 10);
+    return { key, label: date.toLocaleDateString('vi-VN', { timeZone: 'UTC', day: '2-digit', month: '2-digit' }), count: filteredAlerts.filter((item) => typeof item.createdAt === 'string' && item.createdAt.slice(0, 10) === key).length };
+  }), [filteredAlerts, now]);
+  const maxCount = Math.max(1, ...days.map((item) => item.count));
+
+  const retryBoth = () => { monitoringResource.refresh(); alertsResource.refresh(); };
 
   return (
     <div className="wf05-page-container fade-in">
-      <PageHeader title="WF05 - Giám sát & Cảnh báo" subtitle="Theo dõi thay đổi lượt xem, lượt thích và bình luận trong dữ liệu nội dung mock." stepNumber={5} />
-      <WorkflowExecutionStatus workflowCode="WF05" />
+      <PageHeader title="WF05 - Giám sát & Cảnh báo" subtitle="Các lần ghi nhận giám sát và cảnh báo đã lưu trong máy chủ; trang này chỉ đọc dữ liệu, không tạo cảnh báo hoặc kích hoạt n8n." stepNumber={5} />
+
+      <div className="wf05-toolbar">
+        <label>Đối thủ<select aria-label="Lọc đối thủ" value={competitorFilter} onChange={(event) => setCompetitorFilter(event.target.value)}><option value="all">Tất cả đối thủ</option>{competitors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+        <label>Loại cảnh báo<select aria-label="Lọc loại cảnh báo" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">Tất cả loại</option>{alertTypes.map((type) => <option key={type} value={type}>{getTypeLabel(type)}</option>)}</select></label>
+        <button type="button" className="btn btn-primary wf05-refresh-button" onClick={retryBoth} disabled={monitoringResource.loading || alertsResource.loading}><RotateCw size={14} />{monitoringResource.loading || alertsResource.loading ? 'Đang tải…' : 'Làm mới dữ liệu'}</button>
+      </div>
+
+      {monitoringResource.loading && monitoringResource.data === null && <div className="ui-card wf05-state" role="status">Đang tải dữ liệu giám sát…</div>}
+      {monitoringResource.error && <div className="ui-card wf05-error" role="alert"><div><strong>Không tải được dữ liệu giám sát.</strong><p>{monitoringResource.error}</p></div><button className="btn btn-secondary" type="button" onClick={monitoringResource.refresh}>Thử tải lại monitoring</button></div>}
+      {alertsResource.loading && alertsResource.data === null && <div className="ui-card wf05-state" role="status">Đang tải cảnh báo đã lưu…</div>}
+      {alertsResource.error && <div className="ui-card wf05-error" role="alert"><div><strong>Không tải được danh sách cảnh báo.</strong><p>{alertsResource.error}</p></div><button className="btn btn-secondary" type="button" onClick={alertsResource.refresh}>Thử tải lại cảnh báo</button></div>}
 
       <section className="wf05-kpi-grid">
         {[
-          { label: 'Tổng cảnh báo', value: alerts.length, icon: Bell, tint: 'red' },
-          { label: 'Views Growth', value: counts.views, icon: Eye, tint: 'blue' },
-          { label: 'Likes Growth', value: counts.likes, icon: Heart, tint: 'pink' },
-          { label: 'Comments Growth', value: counts.comments, icon: MessageCircle, tint: 'green' },
-        ].map(({ label, value, icon: Icon, tint }) => <article className="ui-card wf05-kpi-card" key={label}><span className={`wf05-kpi-icon ${tint}`}><Icon size={18} /></span><div><span>{label}</span><strong>{value}</strong></div></article>)}
+          { label: 'Tổng cảnh báo', value: filteredAlerts.length, icon: Bell, tint: 'red' },
+          { label: 'Tăng lượt xem', value: counts.views, icon: Eye, tint: 'blue' },
+          { label: 'Tăng lượt thích', value: counts.likes, icon: Heart, tint: 'pink' },
+          { label: 'Tăng bình luận', value: counts.comments, icon: MessageCircle, tint: 'green' },
+        ].map(({ label, value, icon: Icon, tint }) => <article className="ui-card wf05-kpi-card" key={label}><span className={`wf05-kpi-icon ${tint}`}><Icon size={18} /></span><div><span>{label}</span><strong>{alertsResource.error && alertsResource.data === null ? '—' : value}</strong></div></article>)}
       </section>
 
       <section className="wf05-charts-grid">
         <article className="ui-card wf05-chart-card">
-          <div className="wf05-section-heading"><div><h2>Alert Trend</h2><p>Cảnh báo theo ngày</p></div><span className="wf05-chart-caption">Số cảnh báo</span></div>
-          <div className="wf05-trend-chart" role="img" aria-label="Số lượng cảnh báo theo ngày">{daily.map((item) => <div className="wf05-trend-column" key={item.date}><strong>{item.count}</strong><div><i style={{ height: `${Math.max(8, item.count / maxCount * 100)}%` }} /></div><span>{item.label}</span></div>)}</div>
+          <div className="wf05-section-heading"><div><h2>Xu hướng cảnh báo</h2><p>Số cảnh báo theo ngày tạo · 7 ngày gần nhất</p></div><span className="wf05-chart-caption">Các cảnh báo đang lọc</span></div>
+          {alertsResource.error && alertsResource.data === null ? <div className="wf05-state">Biểu đồ không khả dụng khi API cảnh báo lỗi.</div> : filteredAlerts.length === 0 ? <div className="wf05-state">Chưa có cảnh báo trong bộ lọc.</div> : <div className="wf05-trend-chart" role="img" aria-label="Số cảnh báo theo ngày tạo trong 7 ngày gần nhất">{days.map((item) => <div className="wf05-trend-column" key={item.key}><strong>{item.count}</strong><div><i style={{ height: `${Math.max(8, item.count / maxCount * 100)}%` }} /></div><span>{item.label}</span></div>)}</div>}
         </article>
         <article className="ui-card wf05-chart-card">
-          <div className="wf05-section-heading"><div><h2>Alert Type</h2><p>Phân loại theo cấu trúc cảnh báo</p></div></div>
-          <div className="wf05-type-bars">{[
-            { key: 'views_growth', label: 'Views Growth', count: counts.views, rate: 0, color: '#2563eb' },
-            { key: 'likes_growth', label: 'Likes Growth', count: counts.likes, rate: 0, color: '#e11d48' },
-            { key: 'comments_growth', label: 'Comments Growth', count: counts.comments, rate: 0, color: '#059669' },
-          ].map((item) => <div className="wf05-type-row" key={item.key}><span>{item.label}</span><div><i style={{ width: `${alerts.length ? item.count / alerts.length * 100 : 0}%`, backgroundColor: item.color }} /></div><b>{item.count}</b></div>)}</div>
+          <div className="wf05-section-heading"><div><h2>Loại cảnh báo</h2><p>Phân bố từ bản ghi đã lưu</p></div></div>
+          {alertsResource.error && alertsResource.data === null ? <div className="wf05-state">Phân loại không khả dụng khi API cảnh báo lỗi.</div> : filteredAlerts.length === 0 ? <div className="wf05-state">Chưa có cảnh báo để phân loại.</div> : <div className="wf05-type-bars">{[
+            { key: 'views_growth', label: getTypeLabel('views_growth'), count: counts.views, color: '#2563eb' },
+            { key: 'likes_growth', label: getTypeLabel('likes_growth'), count: counts.likes, color: '#e11d48' },
+            { key: 'comments_growth', label: getTypeLabel('comments_growth'), count: counts.comments, color: '#059669' },
+            ...alertTypes.filter((type) => !alertLabels[type]).map((type) => ({ key: type, label: getTypeLabel(type), count: filteredAlerts.filter((item) => item.alertType === type).length, color: '#64748b' })),
+          ].map((item) => <div className="wf05-type-row" key={item.key}><span>{item.label}</span><div><i style={{ width: `${filteredAlerts.length ? item.count / filteredAlerts.length * 100 : 0}%`, backgroundColor: item.color }} /></div><b>{item.count}</b></div>)}</div>}
         </article>
+      </section>
+
+      <section className="ui-card wf05-monitoring-card">
+        <div className="wf05-section-heading wf05-table-heading"><div><h2><Activity size={16} /> Nội dung đang được giám sát</h2><p>{filteredMonitoring.length} nội dung theo dữ liệu máy chủ</p></div></div>
+        {monitoringResource.loading && monitoringResource.data === null ? <div className="wf05-state">Đang tải dữ liệu giám sát…</div> : monitoringResource.error ? <div className="wf05-state">Không thể hiển thị dữ liệu giám sát.</div> : filteredMonitoring.length === 0 ? <div className="wf05-empty-state">máy chủ chưa có nội dung giám sát phù hợp.</div> : <div className="wf05-table-scroll"><table className="wf05-monitoring-table"><thead><tr><th>Mã nội dung</th><th>Nội dung</th><th>Đối thủ</th><th>Nền tảng</th><th>Lần ghi nhận mới nhất</th><th>Lần ghi nhận trước</th></tr></thead><tbody>{filteredMonitoring.map((item) => <MonitoringRow item={item} key={item.socialContentId} />)}</tbody></table></div>}
+        <p className="wf05-monitoring-note">Mỗi nội dung có tối đa hai lần ghi nhận mới nhất, sắp xếp giảm dần theo thời điểm ghi nhận. Bảng không tự tính mức tăng giữa các lần ghi nhận.</p>
       </section>
 
       <section className="ui-card wf05-alert-table-card">
-        <div className="wf05-section-heading wf05-table-heading"><div><h2>Alert Table</h2><p>{filtered.length} trong tổng số {alerts.length} cảnh báo</p></div>
-          <div className="wf05-filters"><select aria-label="Lọc loại cảnh báo" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}><option value="all">Tất cả loại</option><option value="views_growth">Views Growth</option><option value="likes_growth">Likes Growth</option><option value="comments_growth">Comments Growth</option></select><select aria-label="Lọc đối thủ" value={competitorFilter} onChange={(e) => setCompetitorFilter(e.target.value)}><option value="all">Tất cả đối thủ</option>{INITIAL_COMPETITORS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select aria-label="Lọc trạng thái" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="all">Tất cả trạng thái</option><option value="Mới">Mới</option><option value="Đã xử lý">Đã xử lý</option></select></div>
-        </div>
-        <div className="wf05-table-scroll"><table className="wf05-alert-table"><thead><tr><th>ID</th><th>Content ID</th><th>Competitor</th><th>Platform</th><th>Alert Type</th><th>Message</th><th>Views Change</th><th>Growth Rate</th><th>Created At</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>{filtered.map((item) => <tr key={item.id}><td>#{item.id}</td><td>{item.contentId}</td><td>{competitorName(item.competitorId)}</td><td>YouTube</td><td><span className={`wf05-type-pill ${item.alertType}`}>{alertLabels[item.alertType]}</span></td><td>{item.message}</td><td>+{fmtNumber(item.viewsChange)}</td><td>{selectedRate(item)}%</td><td>{fmtDate(item.createdAt)}</td><td><span className={`wf05-status-pill ${item.status === 'Mới' ? 'new' : 'handled'}`}>{item.status}</span></td><td><button className="wf05-view-button" type="button" onClick={() => setSelected(item)}>Xem</button></td></tr>)}</tbody>
-        </table>{filtered.length === 0 && <div className="wf05-empty-state">Không có cảnh báo phù hợp với bộ lọc.</div>}</div>
+        <div className="wf05-section-heading wf05-table-heading"><div><h2>Danh sách cảnh báo</h2><p>{filteredAlerts.length} trong {alerts.length} cảnh báo đã lưu</p></div></div>
+        {alertsResource.loading && alertsResource.data === null ? <div className="wf05-state">Đang tải cảnh báo…</div> : alertsResource.error ? <div className="wf05-state">Cảnh báo chưa tải được. Dữ liệu giám sát phía trên vẫn dùng độc lập.</div> : filteredAlerts.length === 0 ? <div className="wf05-empty-state">máy chủ chưa có cảnh báo phù hợp với bộ lọc.</div> : <div className="wf05-table-scroll"><table className="wf05-alert-table"><thead><tr><th>ID</th><th>Mã video</th><th>Nội dung</th><th>Đối thủ</th><th>Nền tảng</th><th>Loại cảnh báo</th><th>Thông điệp</th><th>Lượt xem Δ</th><th>Lượt thích Δ</th><th>Bình luận Δ</th><th>Tỷ lệ lượt xem · dữ liệu gốc</th><th>Thời điểm tạo</th><th>Chi tiết</th></tr></thead><tbody>{filteredAlerts.map((item) => <tr key={item.id}><td>#{item.id}</td><td>{getContentLabel(item)}</td><td className="wf05-alert-title">{item.socialContent?.title || 'Không có nội dung liên kết'}</td><td>{getCompetitorLabel(item)}</td><td>{platformLabel(item.platform || item.socialContent?.platform)}</td><td><span className={`wf05-type-pill ${knownAlertClass(item.alertType)}`}>{getTypeLabel(item.alertType)}</span></td><td className="wf05-alert-message">{displayAlertMessage(item.message)}</td><td>{signed(item.viewsChange)}</td><td>{signed(item.likesChange)}</td><td>{signed(item.commentsChange)}</td><td>{fmtStoredRate(item.viewsGrowthRate)}</td><td>{fmtDate(item.createdAt)}</td><td><button className="wf05-view-button" type="button" onClick={() => setSelected(item)}>Xem</button></td></tr>)}</tbody></table></div>}
       </section>
 
-      {selected && <div className="wf05-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><section className="wf05-alert-modal" role="dialog" aria-modal="true" aria-labelledby="wf05-modal-title"><header><div><span>WF05 · Alert #{selected.id}</span><h2 id="wf05-modal-title">Chi tiết cảnh báo</h2></div><button type="button" aria-label="Đóng" onClick={() => setSelected(null)}><X size={19} /></button></header>
-        <div className="wf05-modal-identity"><div><span>Competitor</span><strong>{competitorName(selected.competitorId)}</strong></div><div><span>Content ID</span><strong>{selected.contentId}</strong></div><div><span>Platform</span><strong>YouTube</strong></div><div><span>Alert Type</span><strong>{alertLabels[selected.alertType]}</strong></div></div>
-        <div className="wf05-message-box"><span>Message</span><strong>{selected.message}</strong></div>
-        <div className="wf05-modal-metrics"><div><span>Views Change</span><strong>+{fmtNumber(selected.viewsChange)}</strong></div><div><span>Likes Change</span><strong>+{fmtNumber(selected.likesChange)}</strong></div><div><span>Comments Change</span><strong>+{fmtNumber(selected.commentsChange)}</strong></div><div><span>Views Growth Rate</span><strong>{selected.viewsGrowthRate}%</strong></div><div><span>Likes Growth Rate</span><strong>{selected.likesGrowthRate}%</strong></div><div><span>Comments Growth Rate</span><strong>{selected.commentsGrowthRate}%</strong></div></div>
-        <p className="wf05-modal-created">Created At · {fmtDate(selected.createdAt)}</p>
-        <footer>{selected.status === 'Mới' && <button className="btn btn-primary" type="button" onClick={() => markHandled(selected.id)}>Đánh dấu đã xử lý</button>}<button className="wf05-close-button" type="button" onClick={() => setSelected(null)}>Đóng</button></footer>
-      </section></div>}
+      {selected && <AlertDetails alert={selected} onClose={() => setSelected(null)} />}
     </div>
   );
+};
+
+function knownAlertClass(type: string) {
+  return Object.hasOwn(alertLabels, type) ? type : 'other';
+}
+
+const MonitoringRow: React.FC<{ item: MonitoringData }> = ({ item }) => {
+  const snapshots = orderedSnapshots(item.metrics);
+  return <tr><td>{item.contentId || `#${item.socialContentId}`}</td><td className="wf05-alert-title">{item.title || 'Chưa có tiêu đề'}</td><td>{item.competitorName || `Đối thủ #${item.competitorId}`}</td><td>{platformLabel(item.platform)}</td><td><SnapshotSummary snapshot={snapshots[0]} /></td><td><SnapshotSummary snapshot={snapshots[1]} /></td></tr>;
+};
+
+const SnapshotSummary: React.FC<{ snapshot?: MonitoringMetricSnapshot }> = ({ snapshot }) => snapshot ? (
+  <div className="wf05-snapshot-summary"><span>Lượt xem {fmtNumber(snapshot.views)} · Lượt thích {fmtNumber(snapshot.likes)} · Bình luận {fmtNumber(snapshot.comments)}</span><span>Lượt chia sẻ {fmtNumber(snapshot.shares)}</span><time>{fmtDate(snapshot.capturedAt)}</time></div>
+) : <span className="wf05-no-snapshot">Chưa có lần ghi nhận</span>;
+
+const AlertDetails: React.FC<{ alert: MonitoringAlert; onClose: () => void }> = ({ alert, onClose }) => {
+  const content = alert.socialContent;
+  return <div className="wf05-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="wf05-alert-modal" role="dialog" aria-modal="true" aria-labelledby="wf05-modal-title"><header><div><span>WF05 · Cảnh báo #{alert.id}</span><h2 id="wf05-modal-title">Chi tiết cảnh báo đã lưu</h2></div><button type="button" aria-label="Đóng" onClick={onClose}><X size={19} /></button></header>
+    <div className="wf05-modal-identity"><div><span>Đối thủ</span><strong>{getCompetitorLabel(alert)}</strong></div><div><span>Mã video</span><strong>{getContentLabel(alert)}</strong></div><div><span>Nền tảng</span><strong>{platformLabel(alert.platform || content?.platform)}</strong></div><div><span>Loại cảnh báo</span><strong>{getTypeLabel(alert.alertType)}</strong></div></div>
+    <div className="wf05-message-box"><span>Nội dung liên kết</span><strong>{content?.title || 'Không có nội dung liên kết'}</strong>{content?.url && <a href={content.url} target="_blank" rel="noreferrer">Mở nội dung <ExternalLink size={13} /></a>}</div>
+    <div className="wf05-message-box"><span>Thông điệp</span><strong>{displayAlertMessage(alert.message)}</strong></div>
+    <div className="wf05-modal-metrics"><div><span>Thay đổi lượt xem</span><strong>{signed(alert.viewsChange)}</strong></div><div><span>Thay đổi lượt thích</span><strong>{signed(alert.likesChange)}</strong></div><div><span>Thay đổi bình luận</span><strong>{signed(alert.commentsChange)}</strong></div><div><span>Tỷ lệ tăng lượt xem · dữ liệu gốc</span><strong>{fmtStoredRate(alert.viewsGrowthRate)}</strong></div><div><span>Tỷ lệ tăng lượt thích · dữ liệu gốc</span><strong>{fmtStoredRate(alert.likesGrowthRate)}</strong></div><div><span>Tỷ lệ tăng bình luận · dữ liệu gốc</span><strong>{fmtStoredRate(alert.commentsGrowthRate)}</strong></div></div>
+    <p className="wf05-modal-created">Thời điểm tạo · {fmtDate(alert.createdAt)}</p>
+    <footer><button className="wf05-close-button" type="button" onClick={onClose}>Đóng</button></footer>
+  </section></div>;
 };

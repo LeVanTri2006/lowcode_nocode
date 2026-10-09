@@ -1,7 +1,29 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { prisma } from '../prisma/client';
 
 const router = Router();
+
+export function createUnanalysedContentsHandler(
+  findMany: typeof prisma.socialContent.findMany = (args) => prisma.socialContent.findMany(args),
+): RequestHandler {
+  return async (_req, res) => {
+    try {
+      const contents = await findMany({
+        where: { aiAnalysis: { is: null } },
+        orderBy: { id: 'asc' },
+      });
+
+      res.json({ success: true, data: contents });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error?.message || 'Failed to fetch unanalysed social contents',
+      });
+    }
+  };
+}
+
+router.get('/unanalysed', createUnanalysedContentsHandler());
 
 router.get('/', async (req, res) => {
   try {

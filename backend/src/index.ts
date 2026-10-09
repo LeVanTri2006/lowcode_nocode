@@ -10,12 +10,35 @@ import performanceDataRoutes from './routes/performance-data';
 import performanceAnalysesRoutes from './routes/performance-analyses';
 import monitoringDataRoutes from './routes/monitoring-data';
 import monitoringAlertsRoutes from './routes/monitoring-alerts';
+import workflowRunRoutes from './routes/workflow-runs';
+import authRoutes from './routes/auth';
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { Pool } from 'pg';
 
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+const PgSession = connectPgSimple(session);
+const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
+app.use(session({
+  name: 'aca.sid',
+  secret: process.env.SESSION_SECRET || 'missing-session-secret-that-will-not-authenticate',
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  store: new PgSession({ pool: sessionPool, tableName: 'auth_sessions', createTableIfMissing: true }),
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: 'auto',
+    maxAge: 8 * 60 * 60 * 1000,
+    path: '/',
+  },
+}));
 
 app.use('/health', healthRoutes);
 app.use('/api/competitors', competitorRoutes);
@@ -26,6 +49,8 @@ app.use('/api/performance-data', performanceDataRoutes);
 app.use('/api/performance-analyses', performanceAnalysesRoutes);
 app.use('/api/monitoring-data', monitoringDataRoutes);
 app.use('/api/monitoring-alerts', monitoringAlertsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/workflows', workflowRunRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

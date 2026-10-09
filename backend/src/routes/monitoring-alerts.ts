@@ -3,6 +3,30 @@ import { prisma } from '../prisma/client';
 
 const router = Router();
 
+router.get('/', async (req, res) => {
+  try {
+    const competitorId = req.query.competitorId ? Number(req.query.competitorId) : undefined;
+    if (competitorId !== undefined && !Number.isInteger(competitorId)) {
+      return res.status(400).json({ success: false, message: 'competitorId must be an integer' });
+    }
+    const where = {
+      ...(competitorId === undefined ? {} : { competitorId }),
+      ...(req.query.alertType ? { alertType: String(req.query.alertType) } : {})
+    };
+    const data = await prisma.monitoringAlert.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        competitor: { select: { name: true } },
+        socialContent: { select: { contentId: true, title: true, url: true, platform: true } }
+      }
+    });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error?.message || 'Failed to fetch monitoring alerts' });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     const {

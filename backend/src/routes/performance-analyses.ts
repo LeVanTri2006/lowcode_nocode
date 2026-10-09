@@ -3,6 +3,23 @@ import { prisma } from '../prisma/client';
 
 const router = Router();
 
+router.get('/', async (req, res) => {
+  try {
+    const competitorId = req.query.competitorId ? Number(req.query.competitorId) : undefined;
+    if (competitorId !== undefined && !Number.isInteger(competitorId)) {
+      return res.status(400).json({ success: false, message: 'competitorId must be an integer' });
+    }
+    const data = await prisma.performanceAnalysis.findMany({
+      where: competitorId === undefined ? {} : { competitorId },
+      orderBy: { performanceRank: 'asc' },
+      include: { competitor: { select: { name: true, channelId: true, url: true } } }
+    });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error?.message || 'Failed to fetch performance analyses' });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     const {

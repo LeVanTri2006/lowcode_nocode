@@ -53,7 +53,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <button
               className="toast-close"
               onClick={() => removeToast(toast.id)}
-              aria-label="Close"
+              aria-label="Đóng thông báo"
             >
               <X size={14} />
             </button>
@@ -67,7 +67,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error('useToast cần được dùng bên trong ToastProvider');
   }
   return context;
 };

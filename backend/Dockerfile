@@ -1,9 +1,18 @@
 FROM node:18-alpine
+
+# Install OpenSSL so Prisma can detect the correct engine target
+RUN apk add --no-cache openssl
+
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm install
+
 COPY . .
+
 RUN npx prisma generate
 RUN npm run build
+
 EXPOSE 3000
+
 CMD ["npm", "start"]
