@@ -45,6 +45,31 @@ app.use(session({
   },
 }));
 
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'Lowcode Nocode Backend API',
+    status: 'running',
+    endpoints: [
+      { path: '/health', description: 'Kiểm tra trạng thái backend' },
+      { path: '/api/competitors', description: 'Quản lý đối thủ cạnh tranh' },
+      { path: '/api/social-contents', description: 'Quản lý nội dung mạng xã hội' },
+      { path: '/api/social-metrics', description: 'Thống kê mạng xã hội' },
+      { path: '/api/ai-analyses', description: 'Phân tích AI' },
+      { path: '/api/performance-data', description: 'Dữ liệu hiệu suất' },
+      { path: '/api/performance-analyses', description: 'Phân tích hiệu suất' },
+      { path: '/api/monitoring-data', description: 'Dữ liệu giám sát' },
+      { path: '/api/monitoring-alerts', description: 'Cảnh báo giám sát' },
+      { path: '/api/auth', description: 'Xác thực người dùng' },
+      { path: '/api/workflows', description: 'Chạy workflow' },
+      { path: '/api/trends', description: 'Xu hướng' },
+      { path: '/api/opportunities', description: 'Cơ hội' },
+      { path: '/api/risks', description: 'Rủi ro' },
+      { path: '/api/strategies', description: 'Chiến lược' },
+      { path: '/api/reports', description: 'Báo cáo' }
+    ]
+  });
+});
+
 app.use('/health', healthRoutes);
 app.use('/api/competitors', competitorRoutes);
 app.use('/api/social-contents', socialContentRoutes);
