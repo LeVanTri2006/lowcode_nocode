@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   BarChart2,
   CalendarClock,
   Eye,
+  Loader2,
   MessageSquare,
+  PlayCircle,
   RotateCw,
   ThumbsUp,
   Users,
@@ -15,6 +17,11 @@ import { getPerformanceData } from '../../services/api/socialContentsApi';
 import { getPerformanceAnalyses } from '../../services/api/performanceApi';
 import type { PerformanceAnalysis, PerformanceData } from '../../types/api';
 import { platformLabel } from '../../utils/platformLabel';
+import { requestWf04Run } from '../../services/api/workflowRunsApi';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../components/common/Toast';
+import { useNavigate } from 'react-router-dom';
+import { createInFlightLock, executeWf04Run, formatVietnameseDate, getAnalysisTimestamp } from './wf04RunBehavior.mjs';
 import './WF04Page.css';
 
 const numberValue = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
@@ -22,19 +29,23 @@ const formatCount = (value: number) => new Intl.NumberFormat('vi-VN').format(val
 const EMPTY_PERFORMANCE_DATA: PerformanceData[] = [];
 const EMPTY_ANALYSES: PerformanceAnalysis[] = [];
 const formatDate = (value: string | null | undefined) => {
-  if (!value) return 'Chưa có lần ghi nhận';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Thời gian không hợp lệ' : date.toLocaleString('vi-VN');
+  return formatVietnameseDate(value);
 };
 const formatRateValue = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 
 export const WF04Page: React.FC = () => {
+  const { user, loading: authLoading, refresh: refreshAuth } = useAuth();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
   const performanceResource = useApiResource(getPerformanceData, []);
   const analysesResource = useApiResource(getPerformanceAnalyses, []);
   const [period, setPeriod] = useState('all');
   const [competitorFilter, setCompetitorFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [now] = useState(() => Date.now());
+  const [runRequestState, setRunRequestState] = useState<'idle' | 'sending' | 'accepted' | 'no_work' | 'error'>('idle');
+  const [runRequestMessage, setRunRequestMessage] = useState('');
+  const runRequestLock = useRef(createInFlightLock());
 
   const performanceData = performanceResource.data ?? EMPTY_PERFORMANCE_DATA;
   const analyses = analysesResource.data ?? EMPTY_ANALYSES;
@@ -76,6 +87,41 @@ export const WF04Page: React.FC = () => {
   const latestAnalysisError = analysesResource.error;
   const hasInitialLoading = (performanceResource.loading && performanceResource.data === null) || (analysesResource.loading && analysesResource.data === null);
 
+  const handleRequestAnalysis = async () => {
+    if (authLoading || !runRequestLock.current.acquire()) return;
+    if (!user) {
+      runRequestLock.current.release();
+      navigate('/login', { state: { returnTo: '/wf04' } });
+      return;
+    }
+    if (user.role !== 'operator') {
+      runRequestLock.current.release();
+      showToast('Chỉ tài khoản người vận hành mới được gửi yêu cầu phân tích WF04.', 'warning');
+      return;
+    }
+
+    setRunRequestState('sending');
+    setRunRequestMessage('Đang gửi yêu cầu tới Backend…');
+    try {
+      const result = await executeWf04Run(requestWf04Run);
+      setRunRequestState(result.status);
+      setRunRequestMessage(result.message);
+      if (result.status === 'no_work') {
+        showToast(result.message, 'info');
+      } else if (result.status === 'accepted') {
+        showToast(result.message, 'success');
+      } else if (result.httpStatus === 401) {
+        await refreshAuth().catch(() => null);
+        showToast(result.message, 'warning');
+        navigate('/login', { state: { returnTo: '/wf04' } });
+      } else {
+        showToast(result.message, result.httpStatus === 403 ? 'warning' : 'error');
+      }
+    } finally {
+      runRequestLock.current.release();
+    }
+  };
+
   return (
     <div className="wf04-page-container fade-in">
       <PageHeader
@@ -112,7 +158,14 @@ export const WF04Page: React.FC = () => {
           <RotateCw size={14} />
           <span>{performanceResource.loading || analysesResource.loading ? 'Đang tải…' : 'Làm mới dữ liệu'}</span>
         </button>
+        <button type="button" className="btn btn-primary wf04-run-button" onClick={handleRequestAnalysis} disabled={authLoading || runRequestState === 'sending' || user?.role === 'viewer'}>
+          {runRequestState === 'sending' ? <Loader2 size={15} className="spin-icon" /> : <PlayCircle size={15} />}
+          <span>{runRequestState === 'sending' ? 'Đang gửi yêu cầu…' : 'Bắt đầu phân tích hiệu suất'}</span>
+        </button>
       </div>
+
+      {runRequestState !== 'idle' && <div className={`ui-card wf04-run-state ${runRequestState}`} role="status" aria-live="polite">{runRequestMessage}</div>}
+      {user?.role === 'viewer' && <div className="wf04-run-permission" role="note">Chỉ tài khoản người vận hành mới được gửi yêu cầu chạy WF04.</div>}
 
       {hasInitialLoading && <div className="ui-card wf04-state" role="status">Đang tải dữ liệu hiệu suất từ máy chủ…</div>}
 
@@ -201,13 +254,16 @@ const Kpi: React.FC<{ icon: React.ReactNode; color: string; label: string; value
   <div className="ui-card kpi-card-clean"><div className={`kpi-icon-wrap ${color}`}>{icon}</div><div className="kpi-details"><span className="kpi-label">{label}</span><span className="kpi-number">{value}</span><span className="kpi-subtext neutral">{detail}</span></div></div>
 );
 
-const AnalysisSummary: React.FC<{ analysis: PerformanceAnalysis }> = ({ analysis }) => (
-  <div className="wf04-analysis-item">
-    <div className="wf04-analysis-title"><strong>#{analysis.performanceRank} · {analysis.competitor?.name || `Đối thủ #${analysis.competitorId}`}</strong><span>{analysis.platform}</span></div>
-    <div className="wf04-analysis-metrics"><span>{formatCount(numberValue(analysis.videoCount))} video</span><span>{formatCount(numberValue(analysis.totalViews))} lượt xem</span><span>{formatCount(numberValue(analysis.totalLikes))} lượt thích</span><span>{formatCount(numberValue(analysis.totalComments))} bình luận</span></div>
-    <small>Đã lưu {formatDate(analysis.createdAt)}</small>
-  </div>
-);
+const AnalysisSummary: React.FC<{ analysis: PerformanceAnalysis }> = ({ analysis }) => {
+  const timestamp = getAnalysisTimestamp(analysis);
+  return (
+    <div className="wf04-analysis-item">
+      <div className="wf04-analysis-title"><strong>#{analysis.performanceRank} · {analysis.competitor?.name || `Đối thủ #${analysis.competitorId}`}</strong><span>{analysis.platform}</span></div>
+      <div className="wf04-analysis-metrics"><span>{formatCount(numberValue(analysis.videoCount))} video</span><span>{formatCount(numberValue(analysis.totalViews))} lượt xem</span><span>{formatCount(numberValue(analysis.totalLikes))} lượt thích</span><span>{formatCount(numberValue(analysis.totalComments))} bình luận</span></div>
+      <small>{timestamp.label}: {formatDate(timestamp.value)}</small>
+    </div>
+  );
+};
 
 const AnalysisRates: React.FC<{ analysis: PerformanceAnalysis }> = ({ analysis }) => (
   <div className="wf04-analysis-item compact">

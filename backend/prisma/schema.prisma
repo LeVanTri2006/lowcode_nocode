@@ -94,6 +94,7 @@ model PerformanceAnalysis {
   averageCommentRate Float      @map("average_comment_rate")
   performanceRank    Int        @map("performance_rank")
   createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime?  @updatedAt @map("updated_at")
 
   competitor         Competitor @relation(fields: [competitorId], references: [id])
 
