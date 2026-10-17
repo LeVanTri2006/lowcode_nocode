@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "72229761-65f3-48cc-9c9d-5dcbdd280738",
+      "id": "88be15d1-9e3a-4ad1-bc1c-0e8162fa591f",
       "name": "01 - Manual Test Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -22,7 +22,7 @@
           ]
         }
       },
-      "id": "7eb8ee84-b65d-4a22-b92a-c4d97fcf05b7",
+      "id": "0f00322d-5b33-4d82-bea9-1ec102541846",
       "name": "01B - Daily Schedule (08:00)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -33,10 +33,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/performance-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
         "options": {}
       },
-      "id": "82ca93bc-332c-47d1-8be2-f6df369273d6",
+      "id": "3f530eeb-72b1-4d17-9ede-519ef4d94f79",
       "name": "02 - Get Competitor KPI Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -47,10 +47,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/trends",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
         "options": {}
       },
-      "id": "5264c5c0-611e-440b-b683-2293771332b9",
+      "id": "568ac20b-4ad0-48e2-98b6-8b157b2a0196",
       "name": "03 - Get Trends",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -61,10 +61,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/monitoring-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/monitoring-data",
         "options": {}
       },
-      "id": "609e0e37-a7fc-4060-9b26-95c03fc547c9",
+      "id": "59551ba2-c26f-4ff9-b856-295ee8557383",
       "name": "04 - Get Alerts and Monitoring Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -75,10 +75,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/opportunities",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
         "options": {}
       },
-      "id": "aff569eb-ea83-4226-9ed9-852cf6c3507b",
+      "id": "c2950598-4862-4838-a7e9-263fc797ebc4",
       "name": "05 - Get Opportunities",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -89,10 +89,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/risks",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/risks",
         "options": {}
       },
-      "id": "d62c8848-1709-404c-b4e5-fb2f10d00e3c",
+      "id": "4b4f453c-7705-45a1-b43e-4fa42806f919",
       "name": "06 - Get Risks",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -103,10 +103,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/strategies",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/strategies",
         "options": {}
       },
-      "id": "c592e3da-1ea3-4752-a4ca-f08b10ccec8a",
+      "id": "ff513c9c-89ed-4083-ad04-6f436ae988f9",
       "name": "07 - Get Strategies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -117,10 +117,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
         "options": {}
       },
-      "id": "fe52c918-b240-4300-918d-dc5e7b944518",
+      "id": "19cd0e95-e6d3-42c4-a9f3-a1bb9c01a21a",
       "name": "08 - Get Content Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -133,7 +133,7 @@
       "parameters": {
         "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst perf=rowsOf('02 - Get Competitor KPI Data');\nconst trends=rowsOf('03 - Get Trends');\nconst monitoring=rowsOf('04 - Get Alerts and Monitoring Data');\nconst opportunities=rowsOf('05 - Get Opportunities');\nconst risks=rowsOf('06 - Get Risks');\nconst strategies=rowsOf('07 - Get Strategies');\nconst analyses=rowsOf('08 - Get Content Analysis');\nconst groups=new Map();\nfor(const p of perf){const key=String(competitorId(p)??competitorName(p));if(!groups.has(key))groups.set(key,{competitor_id:competitorId(p),competitor_name:competitorName(p),platform:p.platform??'unknown',content_count:0,total_views:0,total_likes:0,total_comments:0});const g=groups.get(key);g.content_count++;g.total_views+=toNum(p.views);g.total_likes+=toNum(p.likes);g.total_comments+=toNum(p.comments);}\nconst kpis=[...groups.values()].map(g=>({...g,engagement_rate:g.total_views?Number(((g.total_likes+g.total_comments)/g.total_views*100).toFixed(2)):0}));\nconst alerts=[];\nfor(const row of monitoring){const ms=Array.isArray(row.metrics)?row.metrics:[];const cur=ms[0]??{},prev=ms[1]??{};const pct=(a,b)=>toNum(b)>0?Number(((toNum(a)-toNum(b))/toNum(b)*100).toFixed(2)):0;const v=pct(cur.views,prev.views),l=pct(cur.likes,prev.likes),c=pct(cur.comments,prev.comments);if(v>=1||l>=1||c>=1)alerts.push({competitor:competitorName(row),content_id:row.contentId??row.content_id??null,views_growth_rate:v,likes_growth_rate:l,comments_growth_rate:c});}\nconst topics=new Map();for(const a of analyses){const t=String(a.topic??a.category??'Unknown');topics.set(t,(topics.get(t)||0)+1);}\nconst now=new Date();const start=new Date(now.getTime()-7*24*60*60*1000);\nconst period={from:start.toISOString().slice(0,10),to:now.toISOString().slice(0,10)};\nconst context={period,competitor_overview:kpis.map(k=>({competitor_id:k.competitor_id,competitor_name:k.competitor_name,platform:k.platform,content_count:k.content_count})),competitor_performance:kpis,trends:trends.slice(0,25),alerts:alerts.slice(0,30),opportunities:opportunities.slice(0,20),risks:risks.slice(0,20),strategies:strategies.slice(0,20),content_topics:[...topics.entries()].sort((a,b)=>b[1]-a[1]).slice(0,20).map(([topic,count])=>({topic,count})),data_counts:{competitors:kpis.length,contents:perf.length,trends:trends.length,alerts:alerts.length,opportunities:opportunities.length,risks:risks.length,strategies:strategies.length,content_analyses:analyses.length}};\nreturn [{json:{context,ai_prompt:`You are an executive analyst producing an evidence-based social media competitor strategy report. Use ONLY the provided context. Do not invent data or claim records exist if a count is zero. Return one valid JSON object with keys: executive_summary (string), competitor_overview (array), competitor_performance (array), top_trends (array), alerts (array), opportunities (array), risks (array), strategic_recommendations (array), conclusion (string), evidence_summary (array). Include period ${period.from} to ${period.to}. The report should be readable and concise, state limitations when data is missing, and connect recommendations to supplied evidence.\\nCONTEXT:\\n${JSON.stringify(context).slice(0,20000)}`}}];\n"
       },
-      "id": "bcbe152d-9fb8-4d4b-9985-9344338fe849",
+      "id": "b0fee08b-0902-4a01-92aa-cef3ac8008a7",
       "name": "09 - Build Report Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -144,9 +144,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function parseAI(value){if(value&&typeof value==='object')return value;if(typeof value==='string')return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());throw new Error('AI Report Generator không trả về JSON.');}\nconst r=$input.first().json;\nconst txt =\n  r.content?.parts?.[0]?.text ??\n  r.output?.[0]?.content?.[0]?.text ??\n  r.output?.[0]?.content?.text ??\n  r.text ??\n  r.message?.content;\nconst a=parseAI(txt);const context=$('09 - Build Report Context').first().json.context;const period=context.period;\nconst report={report_type:'strategic',title:`AI Competitive Analysis Report (${period.from} - ${period.to})`,period,executive_summary:String(a.executive_summary??'Chưa đủ dữ liệu để tạo Executive Summary.'),competitor_overview:Array.isArray(a.competitor_overview)?a.competitor_overview:context.competitor_overview,competitor_performance:Array.isArray(a.competitor_performance)?a.competitor_performance:context.competitor_performance,top_trends:Array.isArray(a.top_trends)?a.top_trends:context.trends,alerts:Array.isArray(a.alerts)?a.alerts:context.alerts,opportunities:Array.isArray(a.opportunities)?a.opportunities:context.opportunities,risks:Array.isArray(a.risks)?a.risks:context.risks,strategic_recommendations:Array.isArray(a.strategic_recommendations)?a.strategic_recommendations:context.strategies,conclusion:String(a.conclusion??''),evidence_summary:Array.isArray(a.evidence_summary)?a.evidence_summary:[],data_counts:context.data_counts,generated_at:new Date().toISOString()};\nreturn [{json:report}];"
+        "jsCode": "const r = $input.first().json;\n\n// Lấy nội dung AI trả về, dù là văn bản hay cấu trúc object.\nconst raw =\n  r.content?.parts?.[0]?.text ??\n  r.output?.[0]?.content?.[0]?.text ??\n  r.output?.[0]?.content?.text ??\n  r.text ??\n  r.message?.content ??\n  r.response ??\n  r.content ??\n  r.output;\n\nlet aiText;\n\nif (typeof raw === 'string') {\n  aiText = raw.trim();\n} else if (raw && typeof raw === 'object') {\n  aiText = JSON.stringify(raw, null, 2);\n} else {\n  throw new Error('Node 10 không trả về nội dung báo cáo.');\n}\n\nif (!aiText) {\n  throw new Error('Nội dung báo cáo từ AI đang trống.');\n}\n\nconst context = $('09 - Build Report Context').first().json.context;\nconst period = context.period;\n\nconst report = {\n  report_type: 'strategic',\n  title: `AI Competitive Analysis Report (${period.from} - ${period.to})`,\n  period,\n\n  // Giữ nguyên toàn bộ văn bản do AI tạo.\n  executive_summary: aiText,\n\n  // Giữ dữ liệu gốc từ backend.\n  competitor_overview: context.competitor_overview,\n  competitor_performance: context.competitor_performance,\n  top_trends: context.trends,\n  alerts: context.alerts,\n  opportunities: context.opportunities,\n  risks: context.risks,\n  strategic_recommendations: context.strategies,\n\n  conclusion: '',\n  evidence_summary: [],\n  data_counts: context.data_counts,\n  generated_at: new Date().toISOString()\n};\n\nreturn [{ json: report }];"
       },
-      "id": "2b2885d2-3f63-4392-91e2-e15bde8e71d5",
+      "id": "1c508def-2428-4be3-9fba-de43bffd2d4c",
       "name": "11 - Parse Structured Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -158,7 +158,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:3000/api/reports",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/reports",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -190,7 +190,7 @@
         },
         "options": {}
       },
-      "id": "c332c41d-7fc1-4ec2-9f71-48e1366b6b12",
+      "id": "40af7c5b-62cd-4733-9b60-426a8f126383",
       "name": "12 - Save Report (confirm POST /api/reports exists)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -204,7 +204,7 @@
       "parameters": {
         "jsCode": "const report=$('11 - Parse Structured Report').first().json;const save=$input.first()?.json??{};const hasError=Boolean(save.error||save.statusCode>=400||save.status==='error');return [{json:{...report,save_status:hasError?'not_saved_check_backend_route':'request_succeeded',save_response:save}}];"
       },
-      "id": "99c085c4-a635-45ce-847b-e13f24f41592",
+      "id": "851ec309-c700-4ac9-af5b-7e3641df2fe8",
       "name": "13 - Show Report and Save Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -217,34 +217,36 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-3.5-flash-lite",
+          "value": "qwen2.5:3b",
           "mode": "list",
-          "cachedResultName": "models/gemini-3.5-flash-lite"
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
             {
-              "content": "={{$json.ai_prompt}}"
+              "content": "=={{$json.ai_prompt}}"
             }
           ]
         },
-        "builtInTools": {},
-        "options": {}
+        "options": {
+          "temperature": 0.1,
+          "num_predict": 300
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.2,
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
       "position": [
-        2144,
+        2080,
         64
       ],
-      "id": "e2ad25ac-2ed0-4d5f-b9f1-cff73db30631",
+      "id": "020b112a-d0e7-4581-be8f-71aef42402a7",
       "name": "10 - AI Report Generator",
       "retryOnFail": true,
       "waitBetweenTries": 3000,
       "credentials": {
-        "googlePalmApi": {
-          "id": "3m4Vw2MJmEPypNsI",
-          "name": "Google Gemini(PaLM) Api account"
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
         }
       }
     }
@@ -400,12 +402,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6514e99c-c511-4fda-9326-04081a2e40d7",
+  "versionId": "06aeb7a5-3b35-4d0b-8107-9b7d669237f6",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
   },
   "nodeGroups": [],
-  "id": "hPHSXcCgZwPxAIZd",
+  "id": "VGE9JSCVp7xtFJFe",
   "tags": []
 }

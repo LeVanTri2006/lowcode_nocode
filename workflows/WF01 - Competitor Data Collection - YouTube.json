@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "b5b59daf-7dfb-4e28-94c0-ba88feaa308c",
+      "id": "30088f41-0401-47ce-8195-99a50b0c0e35",
       "name": "01 - Start WF01",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
         0,
-        0
+        240
       ]
     },
     {
@@ -26,13 +26,13 @@
         },
         "options": {}
       },
-      "id": "982c9f85-bbd6-4a99-8c1a-f977251ec502",
+      "id": "9573b3ec-231a-44bb-b11e-a599259ef16d",
       "name": "02 - Get Competitors",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        240,
-        0
+        272,
+        112
       ]
     },
     {
@@ -40,13 +40,13 @@
         "fieldToSplitOut": "data",
         "options": {}
       },
-      "id": "7653d444-e6ba-4cae-b26d-1f73375ecc9c",
+      "id": "a2625ad0-90c1-4c68-bccc-cac0a27ef1f4",
       "name": "03 - Split Competitors",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        480,
-        0
+        496,
+        80
       ]
     },
     {
@@ -72,14 +72,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        704,
-        0
+        720,
+        80
       ],
-      "id": "7b583825-891a-4d7d-b54f-41a89666cc1f",
+      "id": "e1fed7c2-6e44-4132-9aca-30092966fa9f",
       "name": "04 - Get YouTube Channel",
       "credentials": {
         "httpQueryAuth": {
-          "id": "dMFlUzJ8gsBhqrqb",
+          "id": "hTI0mEQXS1qeJ26l",
           "name": "Query Auth account"
         }
       }
@@ -91,10 +91,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        928,
-        0
+        944,
+        80
       ],
-      "id": "935d3690-ecb0-4fc7-81d6-b0be8c351a9e",
+      "id": "16c68ed4-4b4c-4097-918b-ceb146da2f0e",
       "name": "05 - Extract Uploads Playlist"
     },
     {
@@ -124,14 +124,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1152,
-        0
+        1168,
+        80
       ],
-      "id": "b257ab25-774c-4675-9084-59a92fb071dc",
+      "id": "723fd791-11d5-4f98-beab-bde441bc1677",
       "name": "06 - Get Latest Videos",
       "credentials": {
         "httpQueryAuth": {
-          "id": "dMFlUzJ8gsBhqrqb",
+          "id": "hTI0mEQXS1qeJ26l",
           "name": "Query Auth account"
         }
       }
@@ -143,10 +143,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1376,
-        0
+        1392,
+        80
       ],
-      "id": "0dab1e8d-cf20-4ff0-b876-87655f1e2d35",
+      "id": "cf4b0611-6d04-4cf3-8a3a-7381b5d72547",
       "name": "07 - Extract Video IDs"
     },
     {
@@ -177,10 +177,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1600,
-        0
+        1616,
+        80
       ],
-      "id": "183f0ba3-e776-48b2-b0e5-1c49b7b26365",
+      "id": "4bcbbd81-14d5-463e-9f41-b87df86cfa54",
       "name": "08 - Check Video IDs"
     },
     {
@@ -190,10 +190,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1824,
-        0
+        1840,
+        80
       ],
-      "id": "8f71b184-9dde-4e98-a5f5-77f780548677",
+      "id": "cfb40c53-2faf-4d10-ab08-d9dee3bca765",
       "name": "09 – Build Video ID List"
     },
     {
@@ -219,14 +219,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2048,
-        -80
+        2064,
+        0
       ],
-      "id": "ff9cc2ac-32a8-4311-bf92-cd5e8390e05e",
+      "id": "064201eb-9808-4167-a64b-1914a6586528",
       "name": "10- Get Video Details",
       "credentials": {
         "httpQueryAuth": {
-          "id": "dMFlUzJ8gsBhqrqb",
+          "id": "hTI0mEQXS1qeJ26l",
           "name": "Query Auth account"
         }
       }
@@ -238,10 +238,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2272,
-        -80
+        2288,
+        0
       ],
-      "id": "a4d24b67-8882-4ba1-ae01-70c8acd0f207",
+      "id": "6fe00ce1-15f1-42de-b264-040bcaa4ff78",
       "name": "11 - Normalize Videos"
     },
     {
@@ -282,20 +282,20 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2944,
-        -80
+        2960,
+        0
       ],
-      "id": "e2654fcd-8c21-42be-9e1c-e39f44e0f2e0",
+      "id": "1fe44b56-2837-4396-9bef-c6a7f664a97c",
       "name": "13 - Save Social Metrics"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "Gxu19Rk8lLVEjTxX",
+          "value": "a0UAXCUxvNxXO74O",
           "mode": "list",
-          "cachedResultUrl": "/workflow/Gxu19Rk8lLVEjTxX",
-          "cachedResultName": "My project — WF02 - Content Cleaning & Deduplication"
+          "cachedResultUrl": "/workflow/a0UAXCUxvNxXO74O",
+          "cachedResultName": "WF02 - Content Cleaning & Deduplication"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -310,24 +310,75 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.4,
       "position": [
-        2496,
-        -80
+        2512,
+        0
       ],
-      "id": "da9d0e99-51b2-4bb2-8237-6554e2673f06",
+      "id": "9825c47e-b69b-4cba-8716-6d14937141bf",
       "name": "14 - Execute WF02"
     },
     {
       "parameters": {
-        "jsCode": "const wf02Results = $input.all();\nconst sourceItems = $('11 - Normalize Videos').all();\n\n// Tạo map theo content_id để không phụ thuộc thứ tự item\nconst sourceMap = new Map();\n\nfor (const item of sourceItems) {\n  const data = item.json;\n\n  if (!data.content_id) {\n    continue;\n  }\n\n  sourceMap.set(data.content_id, data);\n}\n\nconst output = [];\n\nfor (const item of wf02Results) {\n  const result = item.json;\n\n  // Nếu WF02 xác định content không hợp lệ\n  // thì không lưu metric\n  if (result.processing_status === 'ignored_invalid') {\n    continue;\n  }\n\n  // Với Duplicate branch:\n  // content_id nằm trực tiếp ở result.content_id\n  //\n  // Với New branch:\n  // POST backend có thể trả contentId bên trong result.data\n  const contentId =\n    result.content_id ??\n    result.data?.contentId ??\n    null;\n\n  if (!contentId) {\n    throw new Error(\n      'Không tìm thấy content_id sau khi WF02 xử lý'\n    );\n  }\n\n  const source = sourceMap.get(contentId);\n\n  if (!source) {\n    throw new Error(\n      `Không tìm thấy dữ liệu metric gốc cho content_id: ${contentId}`\n    );\n  }\n\n  output.push({\n    json: {\n      content_id: source.content_id,\n\n      views: Number(source.views ?? 0),\n\n      likes: Number(source.likes ?? 0),\n\n      comments: Number(source.comments ?? 0),\n\n      shares:\n        source.shares === null ||\n        source.shares === undefined\n          ? null\n          : Number(source.shares),\n\n      captured_at: source.captured_at\n    }\n  });\n}\n\nreturn output;"
+        "jsCode": "// Nhận đầu ra WF02 để xác nhận workflow con đã trả kết quả.\nconst wf02Results = $input.all();\n\nif (wf02Results.length === 0) {\n  throw new Error(\n    'WF02 không trả kết quả; không tiếp tục lưu metrics.'\n  );\n}\n\n// Lấy dữ liệu gốc từ YouTube, không phụ thuộc vào\n// nhánh nào của WF02 đã tạo đầu ra.\nconst sourceItems = $('11 - Normalize Videos').all();\n\nif (sourceItems.length === 0) {\n  throw new Error(\n    'Không có dữ liệu video gốc để chuẩn bị metrics.'\n  );\n}\n\nconst output = [];\n\nfor (const item of sourceItems) {\n  const source = item.json;\n\n  if (!source.content_id) {\n    continue;\n  }\n\n  output.push({\n    json: {\n      content_id: String(source.content_id),\n      views: Number(source.views ?? 0),\n      likes: Number(source.likes ?? 0),\n      comments: Number(source.comments ?? 0),\n\n      shares:\n        source.shares === null ||\n        source.shares === undefined\n          ? null\n          : Number(source.shares),\n\n      captured_at:\n        source.captured_at ?? new Date().toISOString()\n    }\n  });\n}\n\nif (output.length === 0) {\n  throw new Error(\n    'Không có video hợp lệ để lưu metrics.'\n  );\n}\n\nreturn output;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2752,
-        -80
+        2768,
+        0
       ],
-      "id": "a33a6406-ce77-46b3-8eb3-5fe57dcfd998",
+      "id": "7bf32ff3-1034-4f8a-96fc-1fb4be484e47",
       "name": "15 - Prepare Metrics After WF02"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf01/collect",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        48
+      ],
+      "id": "7106203c-fc2c-45d8-8924-22e14f66447e",
+      "name": "Webhook",
+      "webhookId": "58316720-8421-4bfb-a165-87f79279985c",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GFqYaeOH24J0E8zG",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ErYcYrSWOHzWrVaP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ErYcYrSWOHzWrVaP",
+          "cachedResultName": "WF03 - AI Competitor Content Analysis"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        3184,
+        0
+      ],
+      "id": "f3bbcb5c-2dff-4d49-8873-4e3af2ce14fb",
+      "name": "Call 'WF03 - AI Competitor Content Analysis'"
     }
   ],
   "pinData": {},
@@ -474,18 +525,41 @@
           }
         ]
       ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - Save Social Metrics": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF03 - AI Competitor Content Analysis'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9dd49a46-698a-4277-9953-fea0265f7586",
+  "versionId": "21022e1a-5535-46d9-b46d-61bd1b8f0359",
   "meta": {
-    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
   },
   "nodeGroups": [],
-  "id": "ynmjctj6fJXQM1un",
+  "id": "3c9jlQatB2x2PO3m",
   "tags": []
 }

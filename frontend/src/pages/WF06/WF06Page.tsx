@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import {
   TrendingUp,
@@ -9,39 +9,93 @@ import {
   Lightbulb,
   BarChart2,
 } from 'lucide-react';
-import {
-  MARKET_TOPICS,
-  FAST_GROWTH_TOPICS,
-  TRENDING_KEYWORDS,
-} from '../../mocks/marketTrends';
+import { getList } from '../../services/api/client';
+import type { PerformanceData } from '../../types/api';
 import './WF06Page.css';
 
 export const WF06Page: React.FC = () => {
   const [platform, setPlatform] = useState('YouTube');
+  const [trends, setTrends] = useState<any[]>([]);
+  const [videos, setVideos] = useState<PerformanceData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const wordCloudTags = [
-    { text: 'AI', size: 32, color: '#2563EB', weight: 800 },
-    { text: 'iPhone', size: 28, color: '#EF4444', weight: 800 },
-    { text: 'Technology', size: 24, color: '#10B981', weight: 700 },
-    { text: 'Smart Home', size: 20, color: '#EA580C', weight: 700 },
-    { text: 'Review', size: 22, color: '#3B82F6', weight: 700 },
-    { text: 'ChatGPT', size: 14, color: '#6366F1', weight: 600 },
-    { text: 'Camera', size: 16, color: '#059669', weight: 600 },
-    { text: 'Electric Vehicle', size: 13, color: '#64748B', weight: 500 },
-    { text: 'Apple', size: 14, color: '#DC2626', weight: 600 },
-    { text: 'Education', size: 15, color: '#2563EB', weight: 600 },
-    { text: 'Guide', size: 12, color: '#94A3B8', weight: 500 },
-    { text: 'Tools', size: 13, color: '#84CC16', weight: 600 },
-    { text: 'Gaming', size: 16, color: '#8B5CF6', weight: 600 },
-  ];
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const platformDistribution = [
-    { name: 'AI & Technology', pct: 32, color: '#EF4444' },
-    { name: 'Product Review', pct: 24, color: '#3B82F6' },
-    { name: 'Science & Education', pct: 18, color: '#10B981' },
-    { name: 'Gaming', pct: 14, color: '#8B5CF6' },
-    { name: 'Smartphone', pct: 12, color: '#F59E0B' },
-  ];
+    Promise.all([
+      getList<any>('/api/trends', controller.signal),
+      getList<PerformanceData>('/api/performance-data', controller.signal),
+    ])
+      .then(([trendRows, videoRows]) => {
+        setTrends(trendRows);
+        setVideos(videoRows);
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Không tải được dữ liệu API.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const platformVideos = useMemo(
+    () => videos.filter(v => (v.platform || '').toLowerCase() === platform.toLowerCase()),
+    [videos, platform]
+  );
+
+  const validTrends = useMemo(
+    () => trends.filter(t =>
+      t.direction !== 'insufficient_data' &&
+      !String(t.name || '').startsWith('TEST_')
+    ),
+    [trends]
+  );
+
+  const fastGrowthTopics = useMemo(
+    () => validTrends
+      .filter(t => t.direction === 'up')
+      .sort((a, b) => Number(b.growthRate || 0) - Number(a.growthRate || 0)),
+    [validTrends]
+  );
+
+  const keywordCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const video of platformVideos) {
+      const words = (video.title || '').toLocaleLowerCase()
+        .match(/[\\p{L}\\p{N}]+/gu) || [];
+      for (const word of words) {
+        if (word.length >= 4) counts.set(word, (counts.get(word) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([keyword, videoCount], i) => ({ id: i + 1, keyword, videoCount }));
+  }, [platformVideos]);
+
+  const wordCloudTags = keywordCounts.slice(0, 13).map((item, i) => ({
+    text: item.keyword,
+    size: Math.max(12, 30 - i * 1.5),
+    color: ['#2563EB', '#EF4444', '#10B981', '#EA580C', '#3B82F6', '#6366F1'][i % 6],
+    weight: i < 3 ? 800 : 600,
+  }));
+
+  const platformDistribution = [{
+    name: platform,
+    pct: videos.length ? Math.round(platformVideos.length / videos.length * 100) : 0,
+    color: '#2563EB',
+  }];
+
+  const totalVideos = platformVideos.length;
+  const totalTrends = validTrends.length;
+  const totalFastGrowth = fastGrowthTopics.length;
+  const potentialTopics = validTrends.filter(t => Number(t.score) >= 50).length;
+  const fmt = (n: number) => new Intl.NumberFormat('vi-VN').format(n);
 
   return (
     <div className="wf06-page-container fade-in">
@@ -51,6 +105,9 @@ export const WF06Page: React.FC = () => {
         stepNumber={6}
       />
 
+      {loading && <div role="status" className="ui-card">Đang tải dữ liệu từ API…</div>}
+      {error && <div role="alert" className="ui-card">Không tải được dữ liệu: {error}</div>}
+
       {/* TOP ROW: 4 KPI CARDS */}
       <div className="wf06-kpi-grid">
         <div className="ui-card kpi-card-clean">
@@ -59,8 +116,8 @@ export const WF06Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Chủ đề đang thịnh hành</span>
-            <span className="kpi-number">25</span>
-            <span className="kpi-subtext positive">↗ +31.6% so với tuần trước</span>
+            <span className="kpi-number">{loading ? "…" : fmt(totalTrends)}</span>
+            <span className="kpi-subtext">Theo dữ liệu API hiện có</span>
           </div>
         </div>
 
@@ -70,8 +127,8 @@ export const WF06Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Từ khóa xu hướng</span>
-            <span className="kpi-number">132</span>
-            <span className="kpi-subtext positive">↗ +18.9% so với tuần trước</span>
+            <span className="kpi-number">{loading ? "…" : fmt(keywordCounts.length)}</span>
+            <span className="kpi-subtext">Theo dữ liệu API hiện có</span>
           </div>
         </div>
 
@@ -81,8 +138,8 @@ export const WF06Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Chủ đề tăng trưởng nhanh</span>
-            <span className="kpi-number">8</span>
-            <span className="kpi-subtext positive">↗ +60.0% so với tuần trước</span>
+            <span className="kpi-number">{loading ? "…" : fmt(totalFastGrowth)}</span>
+            <span className="kpi-subtext">Theo dữ liệu API hiện có</span>
           </div>
         </div>
 
@@ -92,8 +149,8 @@ export const WF06Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Chủ đề tiềm năng</span>
-            <span className="kpi-number">12</span>
-            <span className="kpi-subtext positive">↗ +33.3% so với tuần trước</span>
+            <span className="kpi-number">{loading ? "…" : fmt(potentialTopics)}</span>
+            <span className="kpi-subtext">Theo dữ liệu API hiện có</span>
           </div>
         </div>
       </div>
@@ -107,44 +164,13 @@ export const WF06Page: React.FC = () => {
               <TrendingUp size={16} className="text-primary" />
               <span>Xu hướng chủ đề theo thời gian</span>
             </div>
-            <div className="chart-legend-row-sm">
-              <span className="legend-item"><span className="legend-dot blue" /> AI & Tech</span>
-              <span className="legend-item"><span className="legend-dot green" /> Review</span>
-              <span className="legend-item"><span className="legend-dot red" /> Science</span>
-              <span className="legend-item"><span className="legend-dot purple" /> Gaming</span>
-              <span className="legend-item"><span className="legend-dot orange" /> Smartphone</span>
-            </div>
+            <div className="chart-legend-row-sm">Chưa có chuỗi dữ liệu lịch sử</div>
           </div>
 
           <div className="chart-svg-wrap">
-            <svg viewBox="0 0 500 180" className="trend-svg-chart">
-              <line x1="30" y1="15" x2="480" y2="15" stroke="#F1F5F9" strokeWidth="1" />
-              <text x="22" y="19" fill="#94A3B8" fontSize="9" textAnchor="end">200</text>
-              <line x1="30" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1" />
-              <text x="22" y="59" fill="#94A3B8" fontSize="9" textAnchor="end">150</text>
-              <line x1="30" y1="95" x2="480" y2="95" stroke="#F1F5F9" strokeWidth="1" />
-              <text x="22" y="99" fill="#94A3B8" fontSize="9" textAnchor="end">100</text>
-              <line x1="30" y1="135" x2="480" y2="135" stroke="#F1F5F9" strokeWidth="1" />
-              <text x="22" y="139" fill="#94A3B8" fontSize="9" textAnchor="end">50</text>
-              <line x1="30" y1="165" x2="480" y2="165" stroke="#E2E8F0" strokeWidth="1" />
-              <text x="22" y="169" fill="#94A3B8" fontSize="9" textAnchor="end">0</text>
-
-              {['02/10', '03/10', '04/10', '05/10', '06/10', '07/10', '08/10'].map((d, i) => (
-                <text key={i} x={45 + i * 68} y="176" fill="#64748B" fontSize="9" textAnchor="middle">
-                  {d}
-                </text>
-              ))}
-
-              {/* Lines */}
-              <polyline fill="none" stroke="#2563EB" strokeWidth="2.5" points="45,130 113,115 181,102 249,94 317,86 385,82 453,72" />
-              <polyline fill="none" stroke="#10B981" strokeWidth="2" points="45,145 113,138 181,130 249,122 317,114 385,110 453,100" />
-              <polyline fill="none" stroke="#EF4444" strokeWidth="2" points="45,155 113,150 181,146 249,142 317,138 385,135 453,130" />
-              <polyline fill="none" stroke="#8B5CF6" strokeWidth="2" points="45,160 113,158 181,154 249,150 317,148 385,145 453,142" />
-              <polyline fill="none" stroke="#F59E0B" strokeWidth="2" points="45,165 113,162 181,160 249,156 317,154 385,150 453,148" />
-
-              <circle cx="453" cy="72" r="3.5" fill="#2563EB" />
-              <circle cx="453" cy="100" r="3.5" fill="#10B981" />
-            </svg>
+            <div className="chart-empty-state">
+              {loading ? 'Đang tải dữ liệu…' : 'API chưa cung cấp dữ liệu lịch sử để vẽ biểu đồ.'}
+            </div>
           </div>
         </div>
 
@@ -157,26 +183,22 @@ export const WF06Page: React.FC = () => {
 
           <div className="donut-content-row">
             <div className="donut-svg-wrap">
-              <svg viewBox="0 0 160 160" className="donut-svg">
-                <circle cx="80" cy="80" r="56" fill="none" stroke="#2563EB" strokeWidth="24" strokeDasharray="107 377" strokeDashoffset="0" />
-                <circle cx="80" cy="80" r="56" fill="none" stroke="#10B981" strokeWidth="24" strokeDasharray="83 377" strokeDashoffset="-107" />
-                <circle cx="80" cy="80" r="56" fill="none" stroke="#EF4444" strokeWidth="24" strokeDasharray="70 377" strokeDashoffset="-190" />
-                <circle cx="80" cy="80" r="56" fill="none" stroke="#8B5CF6" strokeWidth="24" strokeDasharray="58 377" strokeDashoffset="-260" />
-                <circle cx="80" cy="80" r="56" fill="none" stroke="#F59E0B" strokeWidth="24" strokeDasharray="58 377" strokeDashoffset="-318" />
-              </svg>
+              <div className="chart-empty-state">
+                {loading ? 'Đang tải…' : `${fmt(totalVideos)} video trong dữ liệu API`}
+              </div>
               <div className="donut-center-label">
-                <span className="donut-center-number">754</span>
+                <span className="donut-center-number">{fmt(totalVideos)}</span>
                 <span className="donut-center-sub">Tổng video</span>
               </div>
             </div>
 
             <div className="donut-legend-stack">
-              {MARKET_TOPICS.map((topic, i) => (
-                <div key={i} className="donut-legend-item">
-                  <span className="legend-dot" style={{ backgroundColor: topic.color }} />
+              {fastGrowthTopics.slice(0, 5).map((topic: any) => (
+                <div key={topic.id} className="donut-legend-item">
+                  <span className="legend-dot" style={{ backgroundColor: '#2563EB' }} />
                   <div className="legend-meta">
                     <span className="legend-name">{topic.name}</span>
-                    <span className="legend-val">{topic.percentage}%</span>
+                    <span className="legend-val">{topic.growthRate}%</span>
                   </div>
                 </div>
               ))}
@@ -192,11 +214,11 @@ export const WF06Page: React.FC = () => {
           </div>
 
           <div className="fast-growth-list">
-            {FAST_GROWTH_TOPICS.map((t) => (
+            {fastGrowthTopics.map((t: any) => (
               <div key={t.id} className="fast-topic-item">
-                <div className="topic-thumb" style={{ background: t.gradient }} />
+                <div className="topic-thumb" style={{ background: "#2563EB" }} />
                 <span className="topic-name">{t.name}</span>
-                <span className="topic-growth-pill">↗ {t.growth}</span>
+                <span className="topic-growth-pill">↗ {t.growthRate}%</span>
               </div>
             ))}
           </div>
@@ -224,21 +246,17 @@ export const WF06Page: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {TRENDING_KEYWORDS.map((k) => (
+              {keywordCounts.map((k) => (
                 <tr key={k.id}>
                   <td className="text-muted-cell font-semibold">{k.id}</td>
                   <td className="kw-name">{k.keyword}</td>
                   <td className="font-semibold">{k.videoCount}</td>
-                  <td className="growth-text">{k.growth}</td>
+                  <td className="growth-text">—</td>
                   <td>
-                    <span className={`badge-pop ${k.popularity.toLowerCase()}`}>
-                      {k.popularity}
-                    </span>
+                    <span className="badge-pop">Chưa có dữ liệu</span>
                   </td>
                   <td>
-                    <svg width="60" height="18">
-                      <path d={k.sparklinePath} fill="none" stroke={k.sparklineColor} strokeWidth="2" />
-                    </svg>
+                    <span>—</span>
                   </td>
                 </tr>
               ))}
@@ -275,9 +293,12 @@ export const WF06Page: React.FC = () => {
               <span>Nhận định xu hướng</span>
             </div>
             <ul className="insight-bullets-list">
-              <li>Chủ đề về AI Tools đang tăng trưởng mạnh (+120%) và là xu hướng chính của thị trường.</li>
-              <li>Nội dung liên quan đến iPhone 17 có mức quan tâm cao, đặc biệt là các video review và so sánh.</li>
-              <li>Smart Home và Sustainable Tech là các chủ đề tiềm năng, phù hợp để tạo nội dung trong thời gian tới.</li>
+              {fastGrowthTopics.slice(0, 3).map((t: any) => (
+                <li key={t.id}>{t.name}: mức tăng trưởng API ghi nhận {t.growthRate}%. {t.reason}</li>
+              ))}
+              {!loading && fastGrowthTopics.length === 0 && (
+                <li>Chưa có đủ dữ liệu để xác định chủ đề tăng trưởng.</li>
+              )}
             </ul>
           </div>
         </div>
@@ -306,7 +327,7 @@ export const WF06Page: React.FC = () => {
                 <div className="p-bar-track">
                   <div
                     className="p-bar-fill"
-                    style={{ width: `${item.pct * 2.8}%`, backgroundColor: item.color }}
+                    style={{ width: `${item.pct}%`, backgroundColor: item.color }}
                   />
                 </div>
                 <span className="p-bar-pct">{item.pct}%</span>

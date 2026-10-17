@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "6930a7d5-bb4a-462c-9a64-15a6770b59e8",
+      "id": "179bc6f6-238c-4b9e-933a-002a97fcc0e6",
       "name": "01 - Start WF09",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -14,10 +14,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/performance-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
         "options": {}
       },
-      "id": "bfecb0dd-56b9-42ee-a4ac-4d8a5d18bd1f",
+      "id": "b728b249-5ca2-43ab-8b6a-bd1037501083",
       "name": "02 - Get Competitor KPI Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -28,10 +28,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/monitoring-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/monitoring-data",
         "options": {}
       },
-      "id": "a897b595-69a3-478e-90f3-8a4b1f85197c",
+      "id": "076b994c-712c-4fa1-9857-790d1307bafa",
       "name": "03 - Get Monitoring Activity",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -42,10 +42,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/trends",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
         "options": {}
       },
-      "id": "5d4ba9c0-08eb-4f92-b5a4-9b2003a4e3bc",
+      "id": "442911b1-ec80-4132-951e-0291c4dbd208",
       "name": "04 - Get Trends",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -56,10 +56,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/opportunities",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
         "options": {}
       },
-      "id": "ac3df3a4-9a33-4b8e-b958-2c630cd854b8",
+      "id": "1696cc5a-6b84-47bc-8207-7dee4c1aae18",
       "name": "05 - Get Opportunities",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -70,10 +70,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/risks",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/risks",
         "options": {}
       },
-      "id": "85b93651-7aaf-4b60-9d9e-b1393156a637",
+      "id": "9f299d55-739e-4145-ac18-1ea1015637c4",
       "name": "06 - Get Risks",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -84,10 +84,10 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
         "options": {}
       },
-      "id": "78bb4cdd-3bdb-4544-8a1b-b73106205e77",
+      "id": "1be2e884-a5b1-46ad-af3b-d9df4a13be3f",
       "name": "07 - Get Content Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -98,9 +98,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst perf=rowsOf('02 - Get Competitor KPI Data');\nconst monitoring=rowsOf('03 - Get Monitoring Activity');\nconst trends=rowsOf('04 - Get Trends');\nconst opportunities=rowsOf('05 - Get Opportunities');\nconst risks=rowsOf('06 - Get Risks');\nconst analyses=rowsOf('07 - Get Content Analysis');\nconst byCompetitor=new Map();\nfor(const p of perf){const id=String(competitorId(p)??competitorName(p));if(!byCompetitor.has(id))byCompetitor.set(id,{competitor_id:competitorId(p),competitor_name:competitorName(p),video_count:0,views:0,likes:0,comments:0});const g=byCompetitor.get(id);g.video_count++;g.views+=toNum(p.views);g.likes+=toNum(p.likes);g.comments+=toNum(p.comments);}\nconst kpis=[...byCompetitor.values()].map(g=>({...g,engagement_rate:g.views?Number(((g.likes+g.comments)/g.views*100).toFixed(2)):0}));\nconst alerts=[];\nfor(const row of monitoring){const ms=Array.isArray(row.metrics)?row.metrics:[];const cur=ms[0]??{},prev=ms[1]??{};const calc=(a,b)=>toNum(b)>0?Number(((toNum(a)-toNum(b))/toNum(b)*100).toFixed(2)):0;const v=calc(cur.views,prev.views),l=calc(cur.likes,prev.likes),c=calc(cur.comments,prev.comments);if(v>=1||l>=1||c>=1)alerts.push({competitor:competitorName(row),content_id:row.contentId??row.content_id??null,views_growth_rate:v,likes_growth_rate:l,comments_growth_rate:c});}\nconst topicCounts=new Map();for(const a of analyses){const t=String(a.topic??a.category??'Unknown');topicCounts.set(t,(topicCounts.get(t)||0)+1);}\nconst context={competitor_kpi:kpis.slice(0,30),competitor_alerts:alerts.slice(0,30),trends:trends.slice(0,20),opportunities:opportunities.slice(0,20),risks:risks.slice(0,20),content_analysis_summary:[...topicCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([topic,count])=>({topic,count})),data_counts:{competitors:kpis.length,alerts:alerts.length,trends:trends.length,opportunities:opportunities.length,risks:risks.length,content_analyses:analyses.length}};\nreturn [{json:{context,ai_prompt:`You are a strategic advisor for a social-media competitor analysis system. Synthesize only the facts in CONTEXT; do not invent metrics or evidence. Return one JSON object with keys: title, objective, description, priority (HIGH/MEDIUM/LOW), confidence (0-1), evidence (array of short evidence strings or IDs), target_audience, content_format, focus_topic, reason, expected_impact. Provide actionable strategy answering what to focus on, which audience, what content format/topic, why, and likely impact. If evidence is sparse, explicitly say so and lower confidence. The database strategy fields are title/objective/description/priority/confidence/evidence.\\nCONTEXT:\\n${JSON.stringify(context).slice(0,18000)}`}}];\n"
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n\n  return [];\n}\n\nconst rawRisks = rowsOf('06 - Get Risks');\n\nif (!rawRisks.length) {\n  throw new Error('Không có dữ liệu rủi ro từ node 06.');\n}\n\nfunction normalizeText(value) {\n  return String(value ?? '')\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, ' ')\n    .trim();\n}\n\nfunction getCompetitor(risk) {\n  const text = normalizeText(\n    `${risk.title ?? ''} ${risk.reason ?? ''}`\n  );\n\n  const evidence = [\n    ...(Array.isArray(risk.evidence) ? risk.evidence : []),\n    ...(Array.isArray(risk.evidence_ids) ? risk.evidence_ids : [])\n  ].map(String).join(' ');\n\n  const combinedText = normalizeText(`${text} ${evidence}`);\n\n  if (/\\bted\\b/.test(combinedText)) return 'TED';\n\n  if (\n    combinedText.includes('marques brownlee') ||\n    /\\bmkbhd\\b/.test(combinedText)\n  ) {\n    return 'Marques Brownlee';\n  }\n\n  return 'Chưa xác định';\n}\n\nfunction getRiskType(risk) {\n  const title = normalizeText(risk.title);\n  const reason = normalizeText(risk.reason);\n  const text = `${title} ${reason}`;\n\n  if (\n    /(\\d+ video|video moi|tan suat dang|san luong noi dung|luong noi dung)/.test(text)\n  ) {\n    return 'Sản lượng nội dung';\n  }\n\n  if (\n    title.includes('chu de') ||\n    reason.includes('chu de noi dung') ||\n    reason.includes('the thao va the thuc')\n  ) {\n    return 'Chủ đề nội dung';\n  }\n\n  if (\n    text.includes('tuong tac') ||\n    text.includes('luot xem') ||\n    text.includes('binh luan') ||\n    text.includes('luot thich')\n  ) {\n    return 'Hiệu suất tương tác';\n  }\n\n  return 'Rủi ro khác';\n}\n\nconst groups = new Map();\n\nfor (const item of rawRisks) {\n  const r = item.json ?? item;\n\n  const risk = {\n    risk_id: r.id,\n    title: r.title ?? 'Chưa xác định',\n    severity: String(r.severity ?? 'MEDIUM').toUpperCase(),\n    reason: r.reason ?? 'Chưa có thông tin',\n    evidence: Array.isArray(r.evidence)\n      ? r.evidence\n      : Array.isArray(r.evidence_ids)\n        ? r.evidence_ids\n        : []\n  };\n\n  const competitor = getCompetitor(risk);\n  const riskType = getRiskType(risk);\n  const key = `${competitor}|${riskType}`;\n\n  if (!groups.has(key)) {\n    groups.set(key, {\n      competitor,\n      risk_type: riskType,\n      severity: 'LOW',\n      reasons: [],\n      evidence: [],\n      source_risk_ids: []\n    });\n  }\n\n  const group = groups.get(key);\n\n  group.reasons.push(risk.reason);\n  group.evidence.push(...risk.evidence);\n\n  if (risk.risk_id != null) {\n    group.source_risk_ids.push(risk.risk_id);\n  }\n\n  if (risk.severity === 'HIGH') {\n    group.severity = 'HIGH';\n  } else if (\n    risk.severity === 'MEDIUM' &&\n    group.severity !== 'HIGH'\n  ) {\n    group.severity = 'MEDIUM';\n  }\n}\n\nconst risks = [...groups.values()].map((group, index) => ({\n  risk_id: index + 1,\n  competitor: group.competitor,\n  risk_type: group.risk_type,\n  severity: group.severity,\n  summary: [...new Set(group.reasons)],\n  source_risk_ids: [...new Set(group.source_risk_ids)],\n  evidence: [...new Set(group.evidence.map(String))],\n  is_test_data: group.evidence.some(\n    id => /TEST|MOCK/i.test(String(id))\n  )\n}));\n\n// Tạo danh sách bằng chứng hợp lệ từ dữ liệu đầu vào.\nconst evidenceIds = [\n  ...new Set(risks.flatMap(r => r.evidence))\n];\n\nif (!evidenceIds.length) {\n  throw new Error('Không có mã bằng chứng để xây dựng chiến lược.');\n}\n\nconst ai_prompt = `\nBạn là chuyên gia phân tích chiến lược nội dung YouTube.\n\nHãy đề xuất tối đa 3 chiến lược dựa trên dữ liệu rủi ro được cung cấp.\n\nDỮ LIỆU RỦI RO:\n${JSON.stringify(risks, null, 2)}\n\nDANH SÁCH MÃ BẰNG CHỨNG ĐƯỢC PHÉP:\n${JSON.stringify(evidenceIds, null, 2)}\n\nQUY TẮC BẮT BUỘC:\n- Viết bằng tiếng Việt.\n- Dữ liệu TEST/MOCK chỉ dùng để thử nghiệm, không phải bằng chứng thực tế.\n- Chỉ sử dụng mã bằng chứng có trong danh sách được phép.\n- Mỗi chiến lược phải có ít nhất 1 mã bằng chứng liên quan trực tiếp trong trường evidence.\n- Trường evidence phải là mảng các chuỗi mã bằng chứng, không được để mảng rỗng.\n- Không gán mã bằng chứng chỉ vì mã đó xuất hiện trong dữ liệu; phải kiểm tra sự liên quan với chiến lược.\n- Không tự tạo số liệu, sự kiện hoặc mã bằng chứng.\n- Mọi chiến lược phải tập trung vào việc cải thiện kênh YouTube của chính chúng ta, không phải thay đổi đối thủ.\n- Không giả định chúng ta có cùng chủ đề, khán giả hoặc nguồn lực với đối thủ.\n- Nếu chưa có dữ liệu khán giả, hãy nêu rõ giới hạn này.\n- Đề xuất tối đa 3 chiến lược với hướng hành động khác nhau.\n- Mô tả cách triển khai, chỉ số đo lường và giới hạn của dữ liệu.\n- Confidence phải nằm trong khoảng 0 đến 1.\n- Priority chỉ được là LOW, MEDIUM hoặc HIGH.\n- Không khẳng định chiến lược chắc chắn thành công.\n- Không khẳng định doanh thu hoặc thứ hạng tìm kiếm sẽ tăng nếu chưa có bằng chứng.\n- Chỉ trả về JSON hợp lệ, không có Markdown.\n\nCẤU TRÚC JSON:\n{\n  \"strategies\": [\n    {\n      \"title\": \"Tên chiến lược\",\n      \"objective\": \"Mục tiêu\",\n      \"description\": \"Hành động triển khai và chỉ số đo lường\",\n      \"priority\": \"MEDIUM\",\n      \"confidence\": 0.3,\n      \"evidence\": [\"Mã bằng chứng có thật từ danh sách được phép\"],\n      \"target_audience\": \"Đối tượng mục tiêu hoặc giới hạn dữ liệu\",\n      \"content_format\": \"Định dạng nội dung\",\n      \"focus_topic\": \"Chủ đề tập trung\",\n      \"reason\": \"Lý do và căn cứ lựa chọn\",\n      \"expected_impact\": \"Tác động dự kiến và giới hạn bằng chứng\"\n    }\n  ]\n}\n\nKiểm tra trước khi trả kết quả:\n1. Mọi mã trong evidence phải nằm trong danh sách được phép.\n2. Mỗi chiến lược phải có evidence không rỗng.\n3. Các chiến lược phải có hướng hành động khác nhau.\n4. Không đưa mã bằng chứng vào target_audience.\n5. Không coi dữ liệu TEST/MOCK là kết quả thực tế.\n`;\n\nreturn [{\n  json: {\n    risk_count: risks.length,\n    risks,\n    evidence: evidenceIds,\n    ai_prompt\n  }\n}];"
       },
-      "id": "7887cefd-07bf-4668-ac53-38dcc40a6ff1",
+      "id": "7aa963e4-cc11-433b-b688-b1a569b232fb",
       "name": "08 - Build Strategic Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -111,22 +111,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function parseAI(value){if(value&&typeof value==='object')return value;if(typeof value==='string')return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());throw new Error('AI Strategy Agent không trả về JSON.');}\nconst r=$input.first().json;\nconst txt =\n  r.content?.parts?.[0]?.text ??\n  r.output?.[0]?.content?.[0]?.text ??\n  r.output?.[0]?.content?.text ??\n  r.text ??\n  r.message?.content;\nconst a=parseAI(txt);\nconst priority=['HIGH','MEDIUM','LOW'].includes(String(a.priority??'').toUpperCase())?String(a.priority).toUpperCase():'MEDIUM';\nconst baseConfidence=Number(a.confidence);const confidence=Number.isFinite(baseConfidence)?Math.max(0,Math.min(1,baseConfidence)):0.65;\nconst evidence=Array.isArray(a.evidence)?a.evidence.filter(Boolean).slice(0,20):[];\nconst title=String(a.title??'Evidence-Based Competitive Strategy');\nconst objective=String(a.objective??'');const description=String(a.description??'');\nreturn [{json:{title,objective,description,priority,ai_confidence:confidence,evidence,target_audience:String(a.target_audience??''),content_format:String(a.content_format??''),focus_topic:String(a.focus_topic??''),reason:String(a.reason??''),expected_impact:String(a.expected_impact??''),is_valid:Boolean(title&&objective&&description&&evidence.length>0)}}];"
+        "jsCode": "const out = [];\n\nconst requiredFields = [\n  'title',\n  'objective',\n  'description',\n  'target_audience',\n  'content_format',\n  'focus_topic',\n  'reason',\n  'expected_impact'\n];\n\nfor (const item of $input.all()) {\n  const d = item.json;\n  const errors = [];\n\n  // 1. Kiểm tra trường bắt buộc\n  for (const field of requiredFields) {\n    if (\n      typeof d[field] !== 'string' ||\n      d[field].trim() === ''\n    ) {\n      errors.push(`${field} is required`);\n    }\n  }\n\n  // 2. Kiểm tra mức độ ưu tiên\n  if (!['HIGH', 'MEDIUM', 'LOW'].includes(d.priority)) {\n    errors.push('priority must be HIGH, MEDIUM or LOW');\n  }\n\n  // 3. Kiểm tra confidence\n  if (\n    typeof d.confidence !== 'number' ||\n    !Number.isFinite(d.confidence) ||\n    d.confidence < 0 ||\n    d.confidence > 1\n  ) {\n    errors.push('confidence must be between 0 and 1');\n  }\n\n  // 4. Kiểm tra bằng chứng\n  if (!Array.isArray(d.evidence) || d.evidence.length === 0) {\n    errors.push('evidence must be a non-empty array');\n  } else if (\n    !d.evidence.every(\n      e => typeof e === 'string' && e.trim() !== ''\n    )\n  ) {\n    errors.push('evidence contains invalid entries');\n  }\n\n  // 5. Không chấp nhận mục tiêu kiểm soát đối thủ\n  const strategyText = [\n  d.objective,\n  d.description,\n  d.reason,\n  d.expected_impact\n].join(' ').toLowerCase();\n\nconst prohibitedPatterns = [\n  /giảm\\s+(?:lượng\\s+)?nội dung\\s+(?:tăng nhanh\\s+)?của\\s+đối thủ/,\n  /giảm\\s+lượt xem\\s+của\\s+đối thủ/,\n  /giảm\\s+sự chú ý\\s+đến\\s+đối thủ/,\n  /giảm\\s+tương tác\\s+của\\s+đối thủ/\n];\n\nif (prohibitedPatterns.some(pattern => pattern.test(strategyText))) {\n  errors.push('Strategy must focus on improving our own channel');\n}\n\n  // 6. Đánh dấu bằng chứng thử nghiệm\n  const isTestEvidence = Array.isArray(d.evidence) &&\n  d.evidence.some(e => /TEST|MOCK/i.test(e));\n\n  out.push({\n    json: {\n      ...d,\n      is_test_evidence: isTestEvidence,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  });\n}\n\nreturn out;"
       },
-      "id": "f3161bd6-7d7e-433e-8423-172cc90d9e8b",
-      "name": "10 - Parse Structured Strategy",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -960,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const out=[];for(const item of $input.all()){const d=item.json;const errors=[];if(!d.title)errors.push('title is required');if(!d.objective)errors.push('objective is required');if(!d.description)errors.push('description is required');if(!['HIGH','MEDIUM','LOW'].includes(d.priority))errors.push('priority invalid');if(!Array.isArray(d.evidence))errors.push('evidence must be an array');out.push({json:{...d,is_valid:errors.length===0,validation_errors:errors}});}return out;"
-      },
-      "id": "2e6689e3-a2d2-40ef-8dd0-3a64d8c0fbea",
+      "id": "87c4f2fa-1180-4a83-9ee1-947c00aafba9",
       "name": "11 - Validate Strategy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -137,9 +124,9 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item=>{const d=item.json;const evidenceCount=Array.isArray(d.evidence)?d.evidence.length:0;const evidenceFactor=Math.min(1,evidenceCount/5);const confidence=Number(Math.max(0,Math.min(1,(Number(d.ai_confidence??0.65)*0.8)+(evidenceFactor*0.2))).toFixed(2));return {json:{...d,confidence,created_at:new Date().toISOString()}};});"
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n\n  const evidence = Array.isArray(d.evidence)\n    ? d.evidence\n    : [];\n\n  // Phân loại mã bằng chứng thử nghiệm\n  const testEvidence = evidence.filter(id =>\n    /^(TEST|MOCK)(_|$)/i.test(String(id))\n  );\n\n  const realEvidence = evidence.filter(id =>\n    !/^(TEST|MOCK)(_|$)/i.test(String(id))\n  );\n\n  // Chỉ số lượng bằng chứng không đủ để xác định độ tin cậy.\n  // Tạm thời giảm độ tin cậy nếu dữ liệu chỉ là dữ liệu thử nghiệm.\n  const aiConfidence = Number(d.confidence);\n\n  let confidence = Number.isFinite(aiConfidence)\n    ? Math.max(0, Math.min(1, aiConfidence))\n    : 0.3;\n\n  if (evidence.length === 0) {\n    confidence = Math.min(confidence, 0.2);\n  } else if (realEvidence.length === 0) {\n    confidence = Math.min(confidence, 0.3);\n  } else if (testEvidence.length > 0) {\n    confidence = Math.min(confidence, 0.5);\n  }\n\n  return {\n    json: {\n      ...d,\n      confidence: Number(confidence.toFixed(2)),\n      evidence_quality: evidence.length === 0\n        ? 'NO_EVIDENCE'\n        : realEvidence.length === 0\n          ? 'TEST_DATA_ONLY'\n          : testEvidence.length > 0\n            ? 'MIXED_DATA'\n            : 'UNVERIFIED_DATA',\n      test_evidence_count: testEvidence.length,\n      other_evidence_count: realEvidence.length,\n      created_at: new Date().toISOString()\n    }\n  };\n});"
       },
-      "id": "a33f672d-53b0-4e97-8d21-33cb36a33c0a",
+      "id": "de74a708-64c8-47fa-af3a-d9923843a88d",
       "name": "12 - Calculate Confidence",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -173,7 +160,7 @@
         },
         "options": {}
       },
-      "id": "c669d726-078f-47cc-a84d-d00e7c26f9cf",
+      "id": "04409439-d0cb-4a6b-ba25-8c0bb0a04b84",
       "name": "13 - IF Strategy Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -185,7 +172,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:3000/api/strategies",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/strategies",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -221,7 +208,7 @@
         },
         "options": {}
       },
-      "id": "a9ccc626-398b-4656-b472-984a5bae4df8",
+      "id": "24d00df4-1c70-4ffa-b401-e36372116055",
       "name": "14 - Save Strategy to Backend",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
@@ -235,7 +222,7 @@
       "parameters": {
         "jsCode": "return $input.all().map(item=>({json:{processing_status:'strategy_invalid',validation_errors:item.json.validation_errors??[],title:item.json.title??null}}));"
       },
-      "id": "8a993d45-a91d-41e0-984f-b74c3c1c739f",
+      "id": "92a64652-6423-4360-b2a2-c7866afac498",
       "name": "15 - Handle Invalid Strategy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -248,34 +235,54 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-3.6-flash",
+          "value": "qwen2.5:3b",
           "mode": "list",
-          "cachedResultName": "models/gemini-3.6-flash"
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
             {
-              "content": "={{$json.ai_prompt}}"
+              "content": "=={{$json.ai_prompt}}"
             }
           ]
         },
-        "builtInTools": {},
-        "options": {}
+        "options": {
+          "temperature": 0.5,
+          "num_predict": 3000,
+          "format": "json"
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.2,
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
       "position": [
-        -1216,
+        -1248,
         80
       ],
-      "id": "447895df-e854-4462-8f7a-171b8cdfa0b1",
+      "id": "df627ff3-cdaa-4054-b697-4d81a7522c3e",
       "name": "09 - AI Strategy Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "executeOnce": false,
+      "alwaysOutputData": false,
       "credentials": {
-        "googlePalmApi": {
-          "id": "3m4Vw2MJmEPypNsI",
-          "name": "Google Gemini(PaLM) Api account"
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputs = $input.all();\n\nfunction normalizeText(value) {\n  return String(value ?? '')\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, ' ')\n    .trim();\n}\n\nfunction extractContent(item) {\n  const r = item.json ?? {};\n\n  let content =\n    r.content ??\n    r.message?.content ??\n    r.output?.[0]?.content?.[0]?.text ??\n    r.text ??\n    '';\n\n  // Nếu content đã là object thì không cần parse chuỗi bên ngoài.\n  if (typeof content === 'object' && content !== null) {\n    return content;\n  }\n\n  if (typeof content !== 'string' || !content.trim()) {\n    throw new Error('Node 09 không trả về nội dung AI hợp lệ.');\n  }\n\n  content = content\n    .replace(/^\\s*```(?:json)?\\s*/i, '')\n    .replace(/\\s*```\\s*$/i, '')\n    .trim();\n\n  try {\n    return JSON.parse(content);\n  } catch (error) {\n    throw new Error(\n      'JSON từ AI không hợp lệ hoặc bị cắt. ' +\n      'Kiểm tra OUTPUT đầy đủ của node 09. Chi tiết: ' +\n      error.message +\n      '. Nội dung đầu: ' +\n      content.slice(0, 200)\n    );\n  }\n}\n\nconst priorities = ['HIGH', 'MEDIUM', 'LOW'];\nconst strategies = [];\n\nfor (const item of inputs) {\n  let parsed = extractContent(item);\n\n  // Xử lý thêm trường hợp JSON bị bọc trong một chuỗi JSON khác.\n  for (let i = 0; i < 2 && typeof parsed === 'string'; i++) {\n    try {\n      parsed = JSON.parse(parsed);\n    } catch {\n      break;\n    }\n  }\n\n  let list;\n\n  if (Array.isArray(parsed)) {\n    list = parsed;\n  } else if (Array.isArray(parsed.strategies)) {\n    list = parsed.strategies;\n  } else if (\n    parsed.title ||\n    parsed.objective ||\n    parsed.description\n  ) {\n    list = [parsed];\n  } else {\n    throw new Error(\n      'Không tìm thấy strategies hoặc đối tượng chiến lược trong JSON AI.'\n    );\n  }\n\n  for (const s of list) {\n    if (!s || typeof s !== 'object') continue;\n\n    const title = String(s.title ?? '').trim();\n    if (!title) continue;\n\n    const confidence = Number(s.confidence);\n    const rawPriority = String(s.priority ?? '').toUpperCase();\n\n    strategies.push({\n      title,\n      objective: String(s.objective ?? '').trim(),\n      description: String(s.description ?? '').trim(),\n\n      priority: priorities.includes(rawPriority)\n        ? rawPriority\n        : 'MEDIUM',\n\n      confidence: Number.isFinite(confidence)\n        ? Math.max(0, Math.min(1, confidence))\n        : 0.3,\n\n      evidence: Array.isArray(s.evidence)\n        ? [...new Set(\n            s.evidence\n              .filter(v => typeof v === 'string' && v.trim())\n              .map(v => v.trim())\n          )]\n        : [],\n\n      target_audience: String(s.target_audience ?? '').trim(),\n      content_format: String(s.content_format ?? '').trim(),\n      focus_topic: String(s.focus_topic ?? '').trim(),\n      reason: String(s.reason ?? '').trim(),\n      expected_impact: String(s.expected_impact ?? '').trim()\n    });\n  }\n}\n\n// Loại tiêu đề trùng nhau.\nconst seen = new Set();\nconst output = [];\n\nfor (const strategy of strategies) {\n  const key = normalizeText(strategy.title);\n\n  if (!key || seen.has(key)) continue;\n\n  seen.add(key);\n  output.push({ json: strategy });\n}\n\nif (output.length === 0) {\n  throw new Error('AI không trả về chiến lược hợp lệ.');\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        80
+      ],
+      "id": "71a5abf7-f755-407d-a39c-318792179357",
+      "name": "10 - Parse Structured Strategy"
     }
   ],
   "pinData": {},
@@ -368,17 +375,6 @@
         ]
       ]
     },
-    "10 - Parse Structured Strategy": {
-      "main": [
-        [
-          {
-            "node": "11 - Validate Strategy",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "11 - Validate Strategy": {
       "main": [
         [
@@ -429,6 +425,17 @@
           }
         ]
       ]
+    },
+    "10 - Parse Structured Strategy": {
+      "main": [
+        [
+          {
+            "node": "11 - Validate Strategy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -436,12 +443,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "c5ef140d-415b-41a0-bdec-be3aa92888d7",
+  "versionId": "8d01baff-590b-4210-b222-30be03f1267b",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
   },
   "nodeGroups": [],
-  "id": "GjkJFAQon1nQPwRP",
+  "id": "UmdyjyQkp5oseu0k",
   "tags": []
 }

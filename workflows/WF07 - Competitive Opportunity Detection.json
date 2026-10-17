@@ -3,108 +3,108 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "e9248e9d-8a5b-47d8-8abd-29b4f7941cb2",
+      "id": "b8649c7b-dd0b-406e-b491-d489dd8664ae",
       "name": "01 - Start WF07",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2400,
+        -2448,
         80
       ]
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/trends",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
         "options": {}
       },
-      "id": "60eaea70-5a2c-4287-a18c-94fca7b2a65e",
+      "id": "d4d69693-4c45-404a-9c31-b985c2d4f516",
       "name": "02 - Get Trends",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -2160,
+        -2208,
         80
       ]
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/content-analysis",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
         "options": {}
       },
-      "id": "39d90d08-98ce-4375-8b89-5094cc080abb",
+      "id": "b5723386-1ba7-4449-a1ac-38315816d40b",
       "name": "03 - Get Content Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1920,
+        -1968,
         80
       ]
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/social-contents",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
         "options": {}
       },
-      "id": "26877d5a-d90e-4fce-b569-2e871f3ba55b",
+      "id": "132fafb1-a77e-41e1-8811-bef4b39b7619",
       "name": "04 - Get Competitor Contents",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1680,
+        -1728,
         80
       ]
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/performance-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
         "options": {}
       },
-      "id": "b0548c94-eb0b-464e-af8a-ef6c42f01690",
+      "id": "1956ff43-021d-45fc-825a-c2008fe99465",
       "name": "05 - Get Performance Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1440,
+        -1488,
         80
       ]
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:3000/api/competitors",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/competitors",
         "options": {}
       },
-      "id": "b6af6980-6b89-4563-9440-9c9e581f46cb",
+      "id": "482c1d72-e554-4f28-a89a-204cd4e5c30c",
       "name": "06 - Get Competitors",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1200,
+        -1248,
         80
       ]
     },
     {
       "parameters": {
-        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst trends = rowsOf('02 - Get Trends');\nconst analyses = rowsOf('03 - Get Content Analysis');\nconst contents = rowsOf('04 - Get Competitor Contents');\nconst metrics = rowsOf('05 - Get Performance Data');\nconst competitorRows = rowsOf('06 - Get Competitors');\nif (!trends.length) throw new Error('Chưa có trends. Hãy chạy WF06 thành công trước.');\nconst totalCompetitors = new Set(competitorRows.map(c => String(c.id ?? c.competitor_id ?? c.competitorId ?? c.name ?? '')).filter(Boolean)).size || new Set(contents.map(c => String(competitorId(c) ?? '')).filter(Boolean)).size;\nconst contentById = new Map();\nfor (const c of contents) { if (contentId(c)) contentById.set(contentId(c), c); if (c.id != null) contentById.set(String(c.id), c); }\nconst metricById = new Map(metrics.map(m => [contentId(m), m]));\nconst results = [];\nfor (const trend of trends) {\n  const topic = String(trend.name ?? trend.topic ?? trend.title ?? '').trim();\n  if (!topic) continue;\n  const matched = analyses.filter(a => String(a.topic ?? a.name ?? a.category ?? '').trim().toLowerCase() === topic.toLowerCase());\n  const compSet = new Set();\n  const evidence = [];\n  let views = 0, likes = 0, comments = 0, contentVolume = 0;\n  for (const a of matched) {\n    const aid = String(a.content_id ?? a.contentId ?? a.id ?? '');\n    const c = contentById.get(aid) ?? a;\n    const cid = contentId(c) || aid;\n    if (cid) evidence.push(cid);\n    const comp = competitorId(c) ?? competitorId(a);\n    if (comp != null) compSet.add(String(comp));\n    const m = metricById.get(cid) ?? {};\n    views += toNum(m.views ?? c.views);\n    likes += toNum(m.likes ?? c.likes);\n    comments += toNum(m.comments ?? c.comments);\n    contentVolume++;\n  }\n  const coverageCount = compSet.size;\n  const coveragePercent = totalCompetitors > 0 ? Number((coverageCount / totalCompetitors * 100).toFixed(2)) : null;\n  const engagementRate = views > 0 ? Number(((likes + comments) / views * 100).toFixed(2)) : 0;\n  const coverageStatus = coveragePercent === null ? 'unknown' : coveragePercent < 35 ? 'LOW' : coveragePercent < 65 ? 'MEDIUM' : 'HIGH';\n  const payload = {\n    topic, trend_score: toNum(trend.score), growth_rate: trend.growth_rate ?? null,\n    direction: trend.direction ?? null, content_volume: contentVolume,\n    competitor_coverage_count: coverageCount, total_competitors: totalCompetitors,\n    coverage_percent: coveragePercent, coverage_status: coverageStatus,\n    views, likes, comments, engagement_rate: engagementRate,\n    evidence: [...new Set(evidence)].slice(0, 12), trend_id: trend.id ?? null\n  };\n  results.push({json:{...payload, ai_prompt:`You are an evidence-based competitive opportunity analyst. Identify a content opportunity only when audience demand/trend is meaningfully high and competitor coverage is comparatively low. Do not invent evidence. Return one JSON object with keys: is_opportunity (boolean), title (string), score (integer 0-100), priority (HIGH/MEDIUM/LOW), reason (short explanation), recommended_angle (short actionable angle). A high trend score with low coverage and meaningful engagement should score higher. If coverage is unknown or evidence is insufficient, lower confidence and do not assert facts.\\nDATA:\\n${JSON.stringify(payload)}`}});\n}\nif (!results.length) throw new Error('Không tạo được context từ trends.');\nreturn results;\n"
+        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst trends = rowsOf('02 - Get Trends');\nconst analyses = rowsOf('03 - Get Content Analysis');\nconst contents = rowsOf('04 - Get Competitor Contents');\nconst metrics = rowsOf('05 - Get Performance Data');\nconst competitorRows = rowsOf('06 - Get Competitors');\nif (!trends.length) throw new Error('Chưa có trends. Hãy chạy WF06 thành công trước.');\nconst totalCompetitors = new Set(competitorRows.map(c => String(c.id ?? c.competitor_id ?? c.competitorId ?? c.name ?? '')).filter(Boolean)).size || new Set(contents.map(c => String(competitorId(c) ?? '')).filter(Boolean)).size;\nconst contentById = new Map();\nfor (const c of contents) { if (contentId(c)) contentById.set(contentId(c), c); if (c.id != null) contentById.set(String(c.id), c); }\nconst metricById = new Map(metrics.map(m => [contentId(m), m]));\nconst results = [];\nfor (const trend of trends) {\n  const topic = String(trend.name ?? trend.topic ?? trend.title ?? '').trim();\n  if (!topic) continue;\n  const matched = analyses.filter(a => String(a.topic ?? a.name ?? a.category ?? '').trim().toLowerCase() === topic.toLowerCase());\n  const compSet = new Set();\n  const evidence = [];\n  let views = 0, likes = 0, comments = 0, contentVolume = 0;\n  for (const a of matched) {\n    const aid = String(a.content_id ?? a.contentId ?? a.id ?? '');\n    const c = contentById.get(aid) ?? a;\n    const cid = contentId(c) || aid;\n    if (cid) evidence.push(cid);\n    const comp = competitorId(c) ?? competitorId(a);\n    if (comp != null) compSet.add(String(comp));\n    const m = metricById.get(cid) ?? {};\n    views += toNum(m.views ?? c.views);\n    likes += toNum(m.likes ?? c.likes);\n    comments += toNum(m.comments ?? c.comments);\n    contentVolume++;\n  }\n  const coverageCount = compSet.size;\n  const coveragePercent = totalCompetitors > 0 ? Number((coverageCount / totalCompetitors * 100).toFixed(2)) : null;\n  const engagementRate = views > 0 ? Number(((likes + comments) / views * 100).toFixed(2)) : 0;\n  const coverageStatus = coveragePercent === null ? 'unknown' : coveragePercent < 35 ? 'LOW' : coveragePercent < 65 ? 'MEDIUM' : 'HIGH';\n  const payload = {\n    topic, trend_score: toNum(trend.score), growth_rate: trend.growth_rate ?? null,\n    direction: trend.direction ?? null, content_volume: contentVolume,\n    competitor_coverage_count: coverageCount, total_competitors: totalCompetitors,\n    coverage_percent: coveragePercent, coverage_status: coverageStatus,\n    views, likes, comments, engagement_rate: engagementRate,\n    evidence: [...new Set(evidence)].slice(0, 12), trend_id: trend.id ?? null\n  };\n  results.push({json:{...payload, ai_prompt: `You are an expert competitive content opportunity analyst.\n\nAnalyze the provided data and identify potential content opportunities based only on the available evidence.\n\nOUTPUT REQUIREMENTS:\n- Return exactly one valid JSON object.\n- Do not use Markdown or code fences.\n- Do not include any text outside the JSON object.\n- Write all text values in Vietnamese.\n- is_opportunity: boolean (true or false).\n- title: a concise opportunity title in Vietnamese.\n- score: an integer from 0 to 100.\n- priority: \"HIGH\", \"MEDIUM\", or \"LOW\".\n- reason: one short sentence in Vietnamese explaining the decision.\n- recommended_angle: one actionable sentence in Vietnamese.\n\nSCORING RULES:\n- Higher trend scores, positive growth, low competitor coverage, and meaningful engagement support higher scores.\n- If coverage is unknown or evidence is insufficient, reduce confidence.\n- Never invent facts, statistics, or evidence.\n- Set is_opportunity to true only when the data supports a meaningful opportunity.\n- Scores >= 75: priority = \"HIGH\".\n- Scores from 50 to 74: priority = \"MEDIUM\".\n- Scores below 50: priority = \"LOW\".\n- Keep every text field concise.\n\nDATA:\n${JSON.stringify(payload)}`}});\n}\nif (!results.length) {\n  throw new Error('Không tạo được context từ trends.');\n}\n\n// Chỉ gửi tối đa 3 xu hướng đáng phân tích nhất cho AI\nresults.sort((a, b) => {\n  const scoreA = Number(a.json.trend_score ?? 0);\n  const scoreB = Number(b.json.trend_score ?? 0);\n  return scoreB - scoreA;\n});\n\nreturn results.slice(0, 10);"
       },
-      "id": "fe17a8bf-66f3-434f-8d97-84d178ba58ab",
+      "id": "e1b8583f-5e72-4aea-a29d-3e9b92a4249a",
       "name": "07 - Build Opportunity Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -960,
+        -1008,
         80
       ]
     },
     {
       "parameters": {
-        "jsCode": "function parseAI(value) {\n  if (value && typeof value === 'object') return value;\n  if (typeof value === 'string') return JSON.parse(value.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/i,'').replace(/\\s*```$/i,'').trim());\n  throw new Error('AI Opportunity Agent không trả về JSON.');\n}\nconst aiItems = $input.all();\nconst baseItems = $('07 - Build Opportunity Context').all();\nreturn aiItems.map((item, i) => {\n  const b = baseItems[i]?.json;\n  if (!b) throw new Error(`Không tìm thấy opportunity context tại index ${i}`);\n  const root = item.json;\n  const txt =\n  root.content?.parts?.[0]?.text ??\n  root.output?.[0]?.content?.[0]?.text ??\n  root.output?.[0]?.content?.text ??\n  root.text ??\n  root.message?.content;\n  const a = parseAI(txt);\n  const score = Math.round(Math.max(0, Math.min(100, Number(a.score ?? 0))));\n  const priority = ['HIGH','MEDIUM','LOW'].includes(String(a.priority ?? '').toUpperCase()) ? String(a.priority).toUpperCase() : (score >= 80 ? 'HIGH' : score >= 60 ? 'MEDIUM' : 'LOW');\n  return {json:{title:String(a.title ?? `${b.topic} Opportunity`), score, priority, reason:String(a.reason ?? 'Đánh giá theo trend, competitor coverage và engagement.'), evidence:[...(b.trend_id != null ? [`trend_${b.trend_id}`] : []), ...b.evidence].slice(0,15), recommended_angle:String(a.recommended_angle ?? ''), topic:b.topic, trend_score:b.trend_score, coverage_status:b.coverage_status, coverage_percent:b.coverage_percent, engagement_rate:b.engagement_rate, created_at:new Date().toISOString(), is_opportunity:a.is_opportunity === true && score >= 50 && b.coverage_status !== 'HIGH'}};\n});"
+        "jsCode": "const raw = $json.content;\n\nif (typeof raw !== 'string') {\n  throw new Error('Không tìm thấy nội dung AI trong trường content');\n}\n\nconst cleaned = raw\n  .trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/\\s*```$/, '')\n  .trim();\n\nlet ai;\n\ntry {\n  ai = JSON.parse(cleaned);\n} catch (error) {\n  throw new Error('Không đọc được JSON: ' + error.message);\n}\n\n// Lấy đúng dữ liệu ngữ cảnh tương ứng từ node 07\nconst context = $('07 - Build Opportunity Context').item.json;\n\nif (!context.evidence || !Array.isArray(context.evidence)) {\n  throw new Error(\n    `Thiếu evidence cho chủ đề: ${context.topic ?? 'không xác định'}`\n  );\n}\n\nreturn {\n  json: {\n    ...ai,\n    topic: context.topic,\n    evidence: context.evidence,\n    trend_id: context.trend_id ?? null,\n    created_at: new Date().toISOString()\n  }\n};"
       },
-      "id": "6061b0da-cc43-4919-9648-bc277706f3bd",
+      "id": "97f79e6d-e382-4d9c-96e0-fa9fd695db8d",
       "name": "09 - Parse and Score Opportunity",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -432,
+        -480,
         80
       ]
     },
@@ -133,19 +133,19 @@
         },
         "options": {}
       },
-      "id": "f9922dfe-7513-49c3-aac4-c77ea5699ff2",
+      "id": "c60ea7e3-93bd-4a55-a0fd-575ffb67e78c",
       "name": "10 - IF Opportunity Found",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -192,
+        -240,
         80
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:3000/api/opportunities",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -167,22 +167,22 @@
             },
             {
               "name": "evidence",
-              "value": "={{$json.evidence}}"
+              "value": "={{ $json.evidence }}"
             },
             {
               "name": "created_at",
-              "value": "={{$json.created_at}}"
+              "value": "={{ $json.created_at }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "4ec58e93-5a15-494d-9bd4-a68956013a24",
+      "id": "1dbe1eb1-bb3a-4298-9eb8-7487e3e3184b",
       "name": "11 - Save Opportunity to Backend",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        48,
+        0,
         0
       ],
       "onError": "continueRegularOutput"
@@ -191,12 +191,12 @@
       "parameters": {
         "jsCode": "return $input.all().map(item => ({json:{topic:item.json.topic ?? null, title:item.json.title ?? null, score:item.json.score ?? 0, processing_status:'not_saved_as_opportunity', reason:item.json.reason ?? 'Not enough evidence or competitor coverage is already high.'}}));"
       },
-      "id": "91135261-ad2a-4a35-916e-a19bb5adb040",
+      "id": "f96c3746-493c-4654-813c-30e2f925c7d0",
       "name": "12 - No Opportunity Found",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        48,
+        0,
         208
       ]
     },
@@ -204,9 +204,9 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-3.8-flash",
+          "value": "qwen2.5:3b",
           "mode": "list",
-          "cachedResultName": "models/gemini-3.8-flash"
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
@@ -215,23 +215,25 @@
             }
           ]
         },
-        "builtInTools": {},
-        "options": {}
+        "options": {
+          "temperature": 0.1,
+          "num_predict": 300
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.2,
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
       "position": [
-        -736,
+        -816,
         80
       ],
-      "id": "ee0889a8-864e-458e-8ac9-85a12588b08e",
-      "name": "08 - AI Opportunity Agent1",
+      "id": "2dd577d0-8e5d-4e9b-b679-efb95a72054c",
+      "name": "08 - AI Opportunity Agent",
       "retryOnFail": true,
       "waitBetweenTries": 3000,
       "credentials": {
-        "googlePalmApi": {
-          "id": "3m4Vw2MJmEPypNsI",
-          "name": "Google Gemini(PaLM) Api account"
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
         }
       }
     }
@@ -308,7 +310,7 @@
       "main": [
         [
           {
-            "node": "08 - AI Opportunity Agent1",
+            "node": "08 - AI Opportunity Agent",
             "type": "main",
             "index": 0
           }
@@ -344,7 +346,7 @@
         ]
       ]
     },
-    "08 - AI Opportunity Agent1": {
+    "08 - AI Opportunity Agent": {
       "main": [
         [
           {
@@ -361,12 +363,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "08f0b2d2-28c2-4072-b2f5-07b44b3ef0e7",
+  "versionId": "7189c87c-4e4b-4985-9632-b2ba1bb8a343",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "1cdf486d1b55e3db8cf74a874dc22e52ea2fe0b2a63adc208b01d78d3a1cf709"
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
   },
   "nodeGroups": [],
-  "id": "Ygqkca9F9GkofnYx",
+  "id": "qB0wNN2G388PS0vU",
   "tags": []
 }
