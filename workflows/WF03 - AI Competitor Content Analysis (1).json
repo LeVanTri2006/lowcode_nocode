@@ -6,24 +6,24 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        16,
+        96
       ],
-      "id": "e197a7b3-fc4e-439d-9d24-8ad8c68e25bd",
+      "id": "e0399e87-9c8c-46b0-b743-126df96ec8eb",
       "name": "01 - Start WF03"
     },
     {
       "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents/unanalysed",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        224,
-        0
+        240,
+        96
       ],
-      "id": "b211e0c1-6c3a-49ea-9c6c-9fd1a88aff56",
+      "id": "4e4fc644-4851-404b-803e-f67aca3de485",
       "name": "02 - Get Clean Contents"
     },
     {
@@ -34,23 +34,23 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1.1,
       "position": [
-        448,
-        0
+        464,
+        96
       ],
-      "id": "a735ff8d-77a9-42cf-9181-33510837e1a7",
+      "id": "ee1ce73d-bfe4-4bb9-a486-efb827b2ffbe",
       "name": "03 - Split Contents"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  const contentId = data.contentId ?? \"\";\n  const title = String(data.title ?? \"\").trim();\n  const description = String(data.description ?? \"\").trim();\n  const platform = String(data.platform ?? \"\").trim().toLowerCase();\n\n  const aiPrompt = `\nBạn là AI phân tích nội dung đối thủ trên mạng xã hội.\n\nHãy phân tích nội dung video dựa CHỈ trên title và description được cung cấp.\nKhông tự bịa thêm thông tin không có trong dữ liệu.\n\nTHÔNG TIN VIDEO:\n- Platform: ${platform}\n- Content ID: ${contentId}\n- Title: ${title}\n- Description:\n${description}\n\nHãy trả về DUY NHẤT một JSON object hợp lệ, không markdown, không \\`\\`\\`json.\n\nJSON bắt buộc có đúng các field sau:\n\n{\n  \"topic\": \"Chủ đề chính của nội dung\",\n  \"category\": \"Nhóm/chủ đề lớn\",\n  \"content_type\": \"Loại nội dung\",\n  \"sentiment\": \"positive | neutral | negative\",\n  \"keywords\": [\"keyword1\", \"keyword2\", \"keyword3\"],\n  \"summary\": \"Tóm tắt ngắn gọn nội dung\",\n  \"target_audience\": \"Đối tượng khán giả mục tiêu\",\n  \"key_message\": \"Thông điệp chính của nội dung\"\n}\n\nQUY TẮC:\n1. topic phải mô tả chủ đề chính.\n2. category phải là nhóm lớn, ví dụ: Technology, Science, Education, Entertainment, Business, Society.\n3. content_type có thể là các dạng như: Interview, Tutorial, Review, Explainer, Documentary, News, Experiment, Presentation.\n4. sentiment chỉ được là positive, neutral hoặc negative.\n5. keywords phải là một mảng string.\n6. summary phải ngắn gọn nhưng phản ánh đúng nội dung.\n7. target_audience phải dựa trên nội dung thực tế được cung cấp.\n8. key_message phải nêu được thông điệp chính.\n9. Không được thêm field ngoài 8 field đã yêu cầu.\n10. JSON phải hợp lệ để hệ thống có thể parse tự động.\n`.trim();\n\n  return {\n    json: {\n      id: data.id ?? null,\n      competitor_id: data.competitorId ?? null,\n      platform,\n      content_id: contentId,\n      title,\n      description,\n      url: data.url ?? null,\n      published_at: data.publishedAt ?? null,\n      created_at: data.createdAt ?? null,\n\n      ai_prompt: aiPrompt\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const data = item.json;\n\n  const contentId = data.contentId ?? \"\";\n  const title = String(data.title ?? \"\").trim();\n  const description = String(data.description ?? \"\").trim();\n  const platform = String(data.platform ?? \"\").trim().toLowerCase();\n\n  const aiPrompt = `\nBạn là AI phân tích nội dung đối thủ trên mạng xã hội.\n\nHãy phân tích nội dung video dựa CHỈ trên title và description được cung cấp.\nKhông tự bịa thêm thông tin không có trong dữ liệu.\n\nTHÔNG TIN VIDEO:\n- Platform: ${platform}\n- Content ID: ${contentId}\n- Title: ${title}\n- Description:\n${description}\n\nHãy trả về DUY NHẤT một JSON object hợp lệ, không markdown, không \\`\\`\\`json.\n\nJSON bắt buộc có đúng các field sau:\n\n{\n  \"topic\": \"Chủ đề chính của nội dung\",\n  \"category\": \"Nhóm/chủ đề lớn\",\n  \"content_type\": \"Loại nội dung\",\n  \"sentiment\": \"Tích cực | Trung tính | Tiêu cực\",\n  \"keywords\": [\"từ khóa 1\", \"từ khóa 2\", \"từ khóa 3\"],\n  \"summary\": \"Tóm tắt ngắn gọn nội dung\",\n  \"target_audience\": \"Đối tượng khán giả mục tiêu\",\n  \"key_message\": \"Thông điệp chính của nội dung\"\n}\n\nQUY TẮC:\n1. topic phải mô tả chủ đề chính.\n2. category phải là nhóm lớn bằng TIẾNG VIỆT, ví dụ: Công nghệ, Khoa học, Giáo dục, Giải trí, Kinh doanh, Xã hội.\n3. content_type là các dạng nội dung bằng TIẾNG VIỆT như: Phỏng vấn, Hướng dẫn, Đánh giá, Giải thích, Phim tài liệu, Tin tức, Thử nghiệm, Thuyết trình.\n4. sentiment chỉ được là 1 trong 3 giá trị: Tích cực, Trung tính hoặc Tiêu cực.\n5. keywords phải là một mảng string bằng tiếng Việt.\n6. summary phải ngắn gọn nhưng phản ánh đúng nội dung.\n7. target_audience phải dựa trên nội dung thực tế được cung cấp.\n8. key_message phải nêu được thông điệp chính.\n9. Không được thêm field ngoài 8 field đã yêu cầu.\n10. JSON phải hợp lệ để hệ thống có thể parse tự động.\n11. TẤT CẢ GIÁ TRỊ TRONG JSON BẮT BUỘC TRẢ VỀ BẰNG TIẾNG VIỆT.\n`.trim();\n\n  return {\n    json: {\n      id: data.id ?? null,\n      competitor_id: data.competitorId ?? null,\n      platform,\n      content_id: contentId,\n      title,\n      description,\n      url: data.url ?? null,\n      published_at: data.publishedAt ?? null,\n      created_at: data.createdAt ?? null,\n\n      ai_prompt: aiPrompt\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        624,
-        0
+        640,
+        96
       ],
-      "id": "dd0d86b8-bd89-4933-9aa6-ba46cd91761c",
+      "id": "2cc21aa8-aa14-40c5-b561-42157db24bb8",
       "name": "04 - Prepare AI Input"
     },
     {
@@ -80,10 +80,10 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        848,
-        0
+        864,
+        96
       ],
-      "id": "dc23dad0-9864-44a0-b6d2-54c86c1eb55f",
+      "id": "26216657-b304-4a28-b4dd-2fd627fe717f",
       "name": "05 - AI Content Analysis",
       "credentials": {
         "openAiApi": {
@@ -100,23 +100,23 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1216,
-        0
+        1232,
+        96
       ],
-      "id": "8e17c5f6-b09c-4dff-9688-757fdae7164c",
+      "id": "0e2a6733-885d-44a9-9ae9-bb90f16fb2d0",
       "name": "06 - Parse AI Response"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst requiredFields = [\n  'content_id',\n  'topic',\n  'category',\n  'content_type',\n  'sentiment',\n  'keywords',\n  'summary',\n  'target_audience',\n  'key_message'\n];\n\nconst validSentiments = ['positive', 'neutral', 'negative'];\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  for (const field of requiredFields) {\n    if (\n      data[field] === null ||\n      data[field] === undefined ||\n      data[field] === ''\n    ) {\n      errors.push(`${field} bị thiếu`);\n    }\n  }\n\n  if (\n    data.keywords !== null &&\n    data.keywords !== undefined &&\n    !Array.isArray(data.keywords)\n  ) {\n    errors.push('keywords phải là array');\n  }\n\n  if (\n    data.sentiment &&\n    !validSentiments.includes(data.sentiment)\n  ) {\n    errors.push(\n      `sentiment không hợp lệ: ${data.sentiment}`\n    );\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nconst requiredFields = [\n  'content_id',\n  'topic',\n  'category',\n  'content_type',\n  'sentiment',\n  'keywords',\n  'summary',\n  'target_audience',\n  'key_message'\n];\n\n// Đã cập nhật giá trị tiếng Việt. Bổ sung thêm các biến thể viết thường và tiếng Anh để dự phòng AI trả về không đồng nhất\nconst validSentiments = [\n  'Tích cực', 'Trung tính', 'Tiêu cực',\n  'tích cực', 'trung tính', 'tiêu cực',\n  'positive', 'neutral', 'negative'\n];\n\nreturn items.map((item) => {\n  const data = item.json;\n  const errors = [];\n\n  for (const field of requiredFields) {\n    if (\n      data[field] === null ||\n      data[field] === undefined ||\n      data[field] === ''\n    ) {\n      errors.push(`${field} bị thiếu`);\n    }\n  }\n\n  if (\n    data.keywords !== null &&\n    data.keywords !== undefined &&\n    !Array.isArray(data.keywords)\n  ) {\n    errors.push('keywords phải là array');\n  }\n\n  if (\n    data.sentiment &&\n    !validSentiments.includes(data.sentiment)\n  ) {\n    errors.push(\n      `sentiment không hợp lệ: ${data.sentiment}`\n    );\n  }\n\n  return {\n    json: {\n      ...data,\n      is_valid: errors.length === 0,\n      validation_errors: errors\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1440,
-        0
+        1456,
+        96
       ],
-      "id": "85b516ce-39d9-48a1-ba32-d99c2f2e50ab",
+      "id": "de0faff1-1c44-4265-b235-e9c975525f32",
       "name": "07 - Validate AI Output"
     },
     {
@@ -147,10 +147,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1664,
-        0
+        1680,
+        96
       ],
-      "id": "cff41e58-20d3-4638-87e9-74708f2e96a7",
+      "id": "113d3b14-ea56-4df1-8eff-f5b4d4512dc9",
       "name": "08 - IF AI Valid"
     },
     {
@@ -160,10 +160,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1888,
-        96
+        1904,
+        192
       ],
-      "id": "888967be-0e4d-4bcb-a131-993823dc0536",
+      "id": "f8c6e00d-d1a6-4c8f-ab8f-a04d0c718c4a",
       "name": "09 - Handle AI Error"
     },
     {
@@ -220,11 +220,75 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1888,
+        1904,
+        0
+      ],
+      "id": "5ec16a24-6057-40ce-9c98-5864e74056d7",
+      "name": "10 - Save AI Analysis"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf03/analyze",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        288
+      ],
+      "id": "099ca234-6ae5-4769-806b-4647630a5827",
+      "name": "Webhook",
+      "webhookId": "e8480804-6be1-48ee-a199-f0ff5477e4c5",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dzLWyc1Xb1wu2u8n",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
         -96
       ],
-      "id": "74db8632-93eb-4e3c-a015-d2599f8405c9",
-      "name": "10 - Save AI Analysis"
+      "id": "05134c80-fcac-4fec-a554-b810b18cbe0f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ELHoEZLudMRJqu0W",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ELHoEZLudMRJqu0W",
+          "cachedResultName": "WF04 - Competitor Performance Analysis"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        2128,
+        0
+      ],
+      "id": "20b2c71f-b088-45ab-99d9-fb8561abe4e0",
+      "name": "Call 'WF04 - Competitor Performance Analysis'"
     }
   ],
   "pinData": {},
@@ -323,19 +387,52 @@
           }
         ]
       ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Clean Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "02 - Get Clean Contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Save AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF04 - Competitor Performance Analysis'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "f28e8fb0-0048-4b20-836d-02f52b5b515c",
+  "versionId": "e043d80b-3076-4c30-b727-dc3b6a44e9d0",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
   },
   "nodeGroups": [],
-  "id": "5OmwHnAlJhZh25Oo",
+  "id": "ErYcYrSWOHzWrVaP",
   "tags": []
 }

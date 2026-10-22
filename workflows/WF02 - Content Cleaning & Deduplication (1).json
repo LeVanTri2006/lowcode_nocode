@@ -8,10 +8,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        0
+        320,
+        112
       ],
-      "id": "b8db1ee0-700f-4a06-9c07-fd9d228bc15a",
+      "id": "294f6b4c-bdc4-454d-84fb-e28860485685",
       "name": "04 - Normalize Content"
     },
     {
@@ -21,10 +21,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        0
+        544,
+        112
       ],
-      "id": "21ffd6c2-ba1c-4d80-9483-dfe756ed1144",
+      "id": "aae97bb4-cbaf-4dd1-ae5c-2c48433f2730",
       "name": "05 - Clean Text"
     },
     {
@@ -34,10 +34,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
-        0
+        768,
+        112
       ],
-      "id": "8f9b7387-2475-4d85-9f08-ef3fdbdc7cdb",
+      "id": "56581918-2279-4ecd-88ac-1ea4c56d3c90",
       "name": "06 - Validate Content"
     },
     {
@@ -68,10 +68,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1392,
-        0
+        1040,
+        112
       ],
-      "id": "1a2c9e61-729a-497c-94d3-efef66bc8c53",
+      "id": "68f9b4eb-4de9-4adf-a2e5-9792f0fbf5b1",
       "name": "07 - IF Valid"
     },
     {
@@ -95,10 +95,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1664,
-        -32
+        1312,
+        80
       ],
-      "id": "74666112-cf43-40e4-a47c-d2a26fd95fe1",
+      "id": "1930dd3b-1ae5-48b7-a5e1-d80f9c00fb92",
       "name": "08 - Duplicate Check"
     },
     {
@@ -108,10 +108,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1888,
-        -32
+        1536,
+        80
       ],
-      "id": "7aa28ac9-d8df-49f2-a62b-b089e8ede8a3",
+      "id": "8ac1a76b-43a6-4282-9737-bf8ae95f5ee4",
       "name": "09 - Merge Content + Duplicate Status"
     },
     {
@@ -142,10 +142,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2112,
-        -32
+        1760,
+        80
       ],
-      "id": "1ee88248-c901-46f0-80df-28c83ff2e2a0",
+      "id": "014cb46b-f238-4927-93b3-2c60f49e7fcb",
       "name": "10 - IF New Content"
     },
     {
@@ -155,10 +155,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1664,
-        160
+        1312,
+        272
       ],
-      "id": "382052ce-ecde-45a3-b43a-5a61e60ffcd3",
+      "id": "81419da9-a62b-476e-8f4f-0429340c0fc8",
       "name": "07F - Ignore Invalid Content"
     },
     {
@@ -168,10 +168,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2336,
-        96
+        1984,
+        208
       ],
-      "id": "accf29d6-42b6-4ede-a2a5-fbd9073e6e84",
+      "id": "08f91b22-10d6-4270-980e-5cffef80cf56",
       "name": "10F - Ignore Duplicate Content"
     },
     {
@@ -216,10 +216,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2336,
-        -112
+        1984,
+        0
       ],
-      "id": "6d1f1f48-aa98-4e6a-a27d-f5f1fef84b7b",
+      "id": "477a1750-d5ad-4f76-9fa0-058274627d7e",
       "name": "10T - Save New Content"
     },
     {
@@ -229,11 +229,37 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.3,
       "position": [
-        352,
+        0,
+        112
+      ],
+      "id": "caf808fd-d40f-4e43-b60f-37b3331b28bf",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const response = item.json ?? {};\n  const data = response.data ?? {};\n\n  const contentId = data.contentId ?? data.content_id ?? null;\n\n  if (response.success !== true || !contentId) {\n    throw new Error(\n      'Không nhận được contentId hợp lệ từ API lưu nội dung mới'\n    );\n  }\n\n  return {\n    json: {\n      content_id: String(contentId),\n      title: data.title ?? '',\n      platform: data.platform ?? 'youtube',\n      processing_status: 'saved_new',\n      exists: true,\n      social_content_id: data.id ?? null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
         0
       ],
-      "id": "2700e024-d988-45d6-b2d0-84543e3c75e1",
-      "name": "When Executed by Another Workflow"
+      "id": "b6fac404-d38e-4e59-af3c-82d03a92f454",
+      "name": "11T - Normalize Saved Content"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2400,
+        384
+      ],
+      "id": "2c91a856-9624-457c-9818-9dfc848c6d7b",
+      "name": "12 - Merge Processing Results."
     }
   ],
   "pinData": {},
@@ -339,6 +365,50 @@
           }
         ]
       ]
+    },
+    "10T - Save New Content": {
+      "main": [
+        [
+          {
+            "node": "11T - Normalize Saved Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11T - Normalize Saved Content": {
+      "main": [
+        [
+          {
+            "node": "12 - Merge Processing Results.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10F - Ignore Duplicate Content": {
+      "main": [
+        [
+          {
+            "node": "12 - Merge Processing Results.",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "07F - Ignore Invalid Content": {
+      "main": [
+        [
+          {
+            "node": "12 - Merge Processing Results.",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -346,11 +416,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "020a35ce-13c5-4e71-b376-5d029a3e7cfd",
+  "versionId": "e497e639-7384-4939-9685-21702ebb8dce",
   "meta": {
-    "instanceId": "0d3f90eaa9d9c784449b0ec7545000099ba3d3b4fbad5ec558fb5b30747772e2"
+    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
   },
   "nodeGroups": [],
-  "id": "Gxu19Rk8lLVEjTxX",
+  "id": "a0UAXCUxvNxXO74O",
   "tags": []
 }
