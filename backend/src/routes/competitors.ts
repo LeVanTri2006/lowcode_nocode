@@ -59,4 +59,28 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid competitor ID' });
+    }
+
+    const deleted = await prisma.competitor.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Competitor and all associated data deleted successfully',
+      data: deleted
+    });
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return res.status(404).json({ success: false, message: 'Competitor not found' });
+    }
+    next(error);
+  }
+});
+
 export default router;
