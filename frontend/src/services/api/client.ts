@@ -6,7 +6,7 @@ export class ApiError extends Error {
   constructor(message: string, status?: number) { super(message); this.name = 'ApiError'; this.status = status; }
 }
 
-export async function apiRequest<T>(path: string, options: { method?: 'GET' | 'POST'; body?: unknown; signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'; body?: unknown; signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? 12000);
   const onAbort = () => controller.abort();
@@ -28,6 +28,7 @@ export async function apiRequest<T>(path: string, options: { method?: 'GET' | 'P
     // /health currently returns `{ success, service }`; collection endpoints return `{ success, data }`.
     if ('data' in payload) return payload.data as T;
     if (path === '/health') return payload as T;
+    if (payload.success) return payload as unknown as T;
     throw new ApiError('Backend response is missing data.');
   } catch (error) {
     if (error instanceof ApiError) throw error;

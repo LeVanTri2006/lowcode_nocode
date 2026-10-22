@@ -419,6 +419,12 @@
   justify-content: center;
   transition: all 0.15s ease;
   border: 1px solid var(--border-light);
+  cursor: pointer;
+}
+
+.action-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .action-icon-btn.edit {
@@ -437,7 +443,7 @@
   border-color: #FECACA;
 }
 
-.action-icon-btn.delete:hover {
+.action-icon-btn.delete:hover:not(:disabled) {
   background-color: #FEE2E2;
 }
 

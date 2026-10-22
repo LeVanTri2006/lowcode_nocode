@@ -5,7 +5,7 @@ import {
   Edit2, Trash2, Search, Info, Loader2, RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../../components/common/Toast';
-import { createCompetitor, getCompetitors } from '../../services/api/competitorsApi';
+import { createCompetitor, deleteCompetitor, getCompetitors } from '../../services/api/competitorsApi';
 import { getSocialContents } from '../../services/api/socialContentsApi';
 import { ApiError } from '../../services/api/client';
 import { useApiResource } from '../../hooks/api/useApiResource';
@@ -99,6 +99,26 @@ export const WF01Page: React.FC = () => {
     }
   };
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDeleteCompetitor = async (competitor: { id: number; name: string }) => {
+    const confirmed = window.confirm('Bạn có chắc chắn muốn xóa đối thủ này và toàn bộ dữ liệu liên quan? Hành động này không thể hoàn tác.');
+    if (!confirmed) return;
+
+    setDeletingId(competitor.id);
+    try {
+      await deleteCompetitor(competitor.id);
+      competitors.setData((prev) => (prev ? prev.filter((item) => item.id !== competitor.id) : prev));
+      contents.refresh();
+      showToast(`Đã xóa đối thủ “${competitor.name}” và toàn bộ dữ liệu liên quan.`, 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa đối thủ. Vui lòng thử lại.', 'error');
+      competitors.refresh();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleRequestRun = async () => {
     if (!user) { navigate('/login', { state: { returnTo: '/wf01' } }); return; }
     if (user.role !== 'operator') { showToast('Tài khoản của bạn không có quyền vận hành WF01.', 'warning'); return; }
@@ -189,7 +209,7 @@ export const WF01Page: React.FC = () => {
             <td className="text-center font-bold">{contents.error ? '—' : contents.loading && contents.data === null ? '…' : videoCounts.get(competitor.id) ?? 0}</td>
             <td className="text-muted-cell">{formatDate(competitor.createdAt)}</td>
             <td><span className="text-muted-cell">Máy chủ chưa lưu trạng thái</span></td>
-            <td><div className="table-actions-cell"><button type="button" className="action-icon-btn edit" title="Máy chủ chưa hỗ trợ sửa đối thủ" disabled><Edit2 size={15} /></button><button type="button" className="action-icon-btn delete" title="Máy chủ chưa hỗ trợ xóa đối thủ" disabled><Trash2 size={15} /></button><button type="button" className="btn-collect-now" onClick={handleRequestRun} disabled={isRequestingRun}><Play size={12} fill="#2563EB" /><span>Gửi yêu cầu</span></button></div></td>
+            <td><div className="table-actions-cell"><button type="button" className="action-icon-btn edit" title="Máy chủ chưa hỗ trợ sửa đối thủ" disabled><Edit2 size={15} /></button><button type="button" className="action-icon-btn delete" title="Xóa đối thủ" onClick={() => handleDeleteCompetitor(competitor)} disabled={deletingId === competitor.id}>{deletingId === competitor.id ? <Loader2 size={15} className="spin-icon" /> : <Trash2 size={15} />}</button><button type="button" className="btn-collect-now" onClick={handleRequestRun} disabled={isRequestingRun}><Play size={12} fill="#2563EB" /><span>Gửi yêu cầu</span></button></div></td>
           </tr>)}</tbody>
         </table>
         {!competitors.loading && !competitors.error && competitors.data?.length === 0 && <div className="wf01-api-state">Chưa có đối thủ. Hãy thêm đối thủ đầu tiên bằng biểu mẫu.</div>}
