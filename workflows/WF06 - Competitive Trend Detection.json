@@ -3,197 +3,95 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "fd6a550b-c68c-471a-a4d2-f70fd5769860",
-      "name": "01 - Manual Test Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1936,
-        32
-      ]
+        -432,
+        -16
+      ],
+      "id": "7ef38d35-3e97-49ba-8cf9-e56e961327f7",
+      "name": "01 - Start WF06"
     },
     {
       "parameters": {
-        "rule": {
-          "interval": [
+        "httpMethod": "POST",
+        "path": "wf06/trend-detection",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -432,
+        176
+      ],
+      "id": "55fe133f-e7d2-4fc5-98f9-46e271c1cb65",
+      "name": "02 - Webhook Trigger WF06",
+      "webhookId": "743f9f6c-7370-43fa-aaae-af3876221419"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/competitors",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -160,
+        64
+      ],
+      "id": "ca24c171-cb8f-40d4-b85c-d6e44a6c095d",
+      "name": "03 - Get Competitors"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
             {
-              "triggerAtHour": 8
+              "id": "f9545d35-3748-4e4a-bdaa-477cbb48bf27",
+              "name": "competitors",
+              "value": "={{ $json.data }}",
+              "type": "array"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "da9ec032-0663-4d90-9f28-d3aab7773e26",
-      "name": "01B - Daily Schedule (08:00)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
       "position": [
-        -1936,
-        224
-      ]
+        64,
+        64
+      ],
+      "id": "27f61290-ca37-40e5-97f1-e49acc64b440",
+      "name": "04 - Prepare Input"
     },
     {
       "parameters": {
         "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
         "options": {}
       },
-      "id": "6770d678-8103-4f46-93cd-fbfba9478c51",
-      "name": "02 - Get Competitor Contents",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1696,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
-        "options": {}
-      },
-      "id": "19ff35e5-7a77-4775-823e-56d26a211303",
-      "name": "03 - Get Content Analysis",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        -1456,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
-        "options": {}
-      },
-      "id": "bcc377a3-c039-4918-a9d9-47fc3e70a399",
-      "name": "04 - Get Performance KPI",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        -1216,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "function rowsOf(nodeName) {\n  const root = $(nodeName).first()?.json ?? {};\n  if (Array.isArray(root)) return root;\n  if (Array.isArray(root.data)) return root.data;\n  if (Array.isArray(root.items)) return root.items;\n  if (Array.isArray(root.results)) return root.results;\n  return [];\n}\nfunction contentId(row) {\n  return String(row.content_id ?? row.contentId ?? row.video_id ?? row.videoId ?? row.contentID ?? row.id ?? '');\n}\nfunction competitorId(row) {\n  return row.competitor_id ?? row.competitorId ?? row.competitor?.id ?? null;\n}\nfunction competitorName(row) {\n  return String(row.competitor_name ?? row.competitorName ?? row.name ?? row.competitor?.name ?? 'Unknown competitor');\n}\nfunction toNum(v) {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst contentRows = rowsOf('02 - Get Competitor Contents');\nconst analysisRows = rowsOf('03 - Get Content Analysis');\nconst metricRows = rowsOf('04 - Get Performance KPI');\nif (!analysisRows.length) throw new Error('Không có Content Analysis. Hãy chạy WF03 trước và kiểm tra GET /api/ai-analysis.');\n\nconst contentById = new Map();\nfor (const c of contentRows) {\n  const cid = contentId(c);\n  if (cid) contentById.set(cid, c);\n  if (c.id != null) contentById.set(String(c.id), c);\n}\nconst metricsByContent = new Map();\nfor (const m of metricRows) {\n  const cid = contentId(m);\n  if (cid) metricsByContent.set(cid, m);\n}\n\nconst now = Date.now();\nconst day = 24 * 60 * 60 * 1000;\nconst currentStart = now - 7 * day;\nconst previousStart = now - 14 * day;\nconst groups = new Map();\nfor (const a of analysisRows) {\n  const topic = String(a.topic ?? a.name ?? a.category ?? '').trim();\n  if (!topic) continue;\n  const aid = String(a.content_id ?? a.contentId ?? a.video_id ?? a.videoId ?? a.social_content_id ?? a.id ?? '');\n  const c = contentById.get(aid) ?? a;\n  const cid = contentId(c) || aid;\n  const dateValue = c.published_at ?? c.publishedAt ?? c.published_at ?? c.created_at ?? a.published_at ?? a.createdAt;\n  const ts = dateValue ? new Date(dateValue).getTime() : NaN;\n  const period = Number.isFinite(ts) && ts >= currentStart ? 'current' :\n    (Number.isFinite(ts) && ts >= previousStart && ts < currentStart ? 'previous' : 'other');\n  const m = metricsByContent.get(cid) ?? {};\n  if (!groups.has(topic.toLowerCase())) groups.set(topic.toLowerCase(), {\n    name: topic, current_count: 0, previous_count: 0, total_count: 0,\n    total_views: 0, total_likes: 0, total_comments: 0, content_ids: [],\n    competitors: new Set(), current_content_ids: [], previous_content_ids: []\n  });\n  const g = groups.get(topic.toLowerCase());\n  g.total_count++;\n  if (period === 'current') { g.current_count++; g.current_content_ids.push(cid); }\n  if (period === 'previous') { g.previous_count++; g.previous_content_ids.push(cid); }\n  g.total_views += toNum(m.views ?? c.views);\n  g.total_likes += toNum(m.likes ?? c.likes);\n  g.total_comments += toNum(m.comments ?? c.comments);\n  if (cid) g.content_ids.push(cid);\n  const comp = competitorId(c) ?? competitorId(a);\n  if (comp != null) g.competitors.add(String(comp));\n}\nif (!groups.size) throw new Error('Không tìm thấy topic hợp lệ trong Content Analysis.');\nconst out = [];\nfor (const g of groups.values()) {\n  const growth = g.previous_count > 0 ? Number((((g.current_count - g.previous_count) / g.previous_count) * 100).toFixed(2)) : null;\n  const engagementRate = g.total_views > 0 ? Number((((g.total_likes + g.total_comments) / g.total_views) * 100).toFixed(2)) : 0;\n  const growthDirection = growth === null ? (g.current_count > 0 ? 'emerging' : 'insufficient_data') : growth > 0 ? 'up' : growth < 0 ? 'down' : 'stable';\n  const evidence = [...new Set(g.content_ids)].slice(0, 12);\n  const data = {\n    name: g.name, current_count: g.current_count, previous_count: g.previous_count,\n    total_count: g.total_count, growth_rate: growth, direction: growthDirection,\n    competitor_count: g.competitors.size, total_views: g.total_views,\n    engagement_rate: engagementRate, evidence,\n    ai_prompt: `You are an evidence-based social media competitive trend analyst.\n\nLANGUAGE:\n- Write reason and trend_summary in Vietnamese.\n- Return exactly one valid JSON object.\n- Do not use Markdown code fences.\n- Do not include any text outside the JSON object.\n\nOUTPUT FORMAT:\n{\n  \"score\": 0,\n  \"direction\": \"insufficient_data\",\n  \"reason\": \"Giải thích ngắn gọn dựa trên dữ liệu được cung cấp.\",\n  \"trend_summary\": \"Tóm tắt xu hướng trong một câu.\"\n}\n\nRULES:\n1. Analyze only the supplied metrics. Never invent facts or missing values.\n2. direction must be exactly one of:\n   \"up\", \"down\", \"stable\", \"emerging\", \"insufficient_data\".\n3. If growth_rate is null, the historical baseline is insufficient.\n   Do not claim that the trend is increasing or decreasing based only on total_views.\n   If current_count > 0, direction may be \"emerging\" only when the data supports identifying newly observed content; otherwise use \"insufficient_data\".\n4. If growth_rate is a number:\n   - Positive growth_rate means \"up\".\n   - Negative growth_rate means \"down\".\n   - Zero growth_rate means \"stable\".\n   Use the counts and metrics to explain the result without exaggerating.\n5. Score must be an integer from 0 to 100.\n   The score represents the strength of the evidence for a trend, not simply the number of views.\n   When historical data is insufficient, use a conservative score and explain the limitation.\n6. Do not claim that views, likes, comments, or engagement increased or decreased unless the supplied data supports that comparison.\n7. Keep reason concise and trend_summary to one sentence.\n\nDATA:\n${JSON.stringify({\n  name: g.name,\n  current_count: g.current_count,\n  previous_count: g.previous_count,\n  total_count: g.total_count,\n  growth_rate: growth,\n  direction: growthDirection,\n  competitor_count: g.competitors.size,\n  total_views: g.total_views,\n  engagement_rate: engagementRate,\n  evidence\n})}`\n  };\n  out.push({json:data});\n}\nreturn out;\n"
-      },
-      "id": "9749aa4a-195d-4598-b9de-255d14c34c6a",
-      "name": "05 - Aggregate Topics",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -976,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "function parseAI(value) {\n  if (value && typeof value === 'object') return value;\n  if (typeof value === 'string') {\n    const t = value.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();\n    return JSON.parse(t);\n  }\n  throw new Error('AI Trend Analysis không trả về JSON.');\n}\nconst aiItems = $input.all();\nconst source = $('05 - Aggregate Topics').all();\nreturn aiItems.map((item, i) => {\n  const base = source[i]?.json;\n  if (!base) throw new Error(`Không tìm thấy dữ liệu topic gốc tại vị trí ${i}`);\n  const root = item.json;\n  const txt =\n  root.content?.parts?.[0]?.text ??\n  root.content ??\n  root.output?.[0]?.content?.[0]?.text ??\n  root.output?.[0]?.content?.text ??\n  root.text ??\n  root.message?.content;\n  const ai = parseAI(txt);\n  const fallback = base.current_count > 0 ? 55 : 30;\n  const score = Math.round(Math.max(0, Math.min(100, Number(ai.score ?? fallback))));\n  return {json: {\n    name: base.name,\n    score,\n    growth_rate: base.growth_rate ?? 0,\n    direction: String(ai.direction ?? base.direction),\n    reason: String(ai.reason ?? ai.trend_summary ?? 'Phân tích dựa trên số lượng nội dung, mức tăng trưởng và tương tác.'),\n    evidence: base.evidence,\n    detected_at: new Date().toISOString(),\n    current_count: base.current_count,\n    previous_count: base.previous_count,\n    competitor_count: base.competitor_count,\n    engagement_rate: base.engagement_rate,\n    is_valid:\n  Boolean(base.name) &&\n  !['n/a', 'na', 'unknown', 'untitled'].includes(\n    String(base.name).trim().toLowerCase()\n  ) &&\n  Number.isFinite(score) &&\n  score >= 0 &&\n  score <= 100 &&\n  Array.isArray(base.evidence) &&\n  base.evidence.length > 0\n  }};\n});"
-      },
-      "id": "364111b6-84c7-4526-a091-88b15ee27b13",
-      "name": "07 - Parse AI and Calculate Trend Score",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -464,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "c5446b53-326c-4f11-9e30-387dba17eeb7",
-              "leftValue": "={{$json.is_valid}}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "23eb04d0-0c86-469b-9ce7-f12e310bd6db",
-      "name": "08 - IF Trend Valid",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -224,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "name",
-              "value": "={{$json.name}}"
-            },
-            {
-              "name": "score",
-              "value": "={{$json.score}}"
-            },
-            {
-              "name": "growth_rate",
-              "value": "={{$json.growth_rate}}"
-            },
-            {
-              "name": "direction",
-              "value": "={{$json.direction}}"
-            },
-            {
-              "name": "reason",
-              "value": "={{$json.reason}}"
-            },
-            {
-              "name": "evidence",
-              "value": "={{$json.evidence}}"
-            },
-            {
-              "name": "detected_at",
-              "value": "={{$json.detected_at}}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "ab8ba8e3-e289-400a-b59c-0abfb71d614a",
-      "name": "09 - Save Trend to Backend",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        0,
-        0
+        288,
+        64
       ],
-      "onError": "continueRegularOutput"
+      "id": "a462427f-873b-40a2-bff1-ef684d40fe69",
+      "name": "05 - Get Social Contents"
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => ({json:{name:item.json.name ?? null, processing_status:'trend_invalid', reason:item.json.reason ?? 'Trend result failed validation', is_valid:false}}));"
+        "jsCode": "const response = $input.first().json;\nconst videos = response.data ?? [];\n\nreturn videos\n  .filter(video => video.title && video.contentId)\n  .map(video => ({\n    json: {\n      competitorId: video.competitorId,\n      platform: video.platform,\n      contentId: video.contentId,\n      title: video.title,\n      description: (video.description ?? '').slice(0, 500),\n      publishedAt: video.publishedAt,\n      url: video.url,\n    }\n  }));"
       },
-      "id": "9c7fb59f-6f22-4711-8f43-21fb979a5125",
-      "name": "10 - Handle Invalid Trend",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        192
-      ]
+        512,
+        64
+      ],
+      "id": "92f4601c-3e01-4d24-ab92-ad346d94d06a",
+      "name": "06 - Prepare Videos for AI"
     },
     {
       "parameters": {
@@ -206,133 +104,149 @@
         "messages": {
           "values": [
             {
-              "content": "=={{ $json.ai_prompt }}"
+              "content": "=Bạn là hệ thống phân tích xu hướng nội dung YouTube. Hãy phân tích dữ liệu video được cung cấp và xác định tối đa 5 xu hướng nội dung nổi bật.\n\nDỮ LIỆU VIDEO:\n{{ JSON.stringify($input.all().map(item => ({\n  title: item.json.title,\n  description: item.json.description,\n  competitorId: item.json.competitorId,\n  publishedAt: item.json.publishedAt,\n  url: item.json.url\n}))) }}\n\nYÊU CẦU ĐẦU RA:\nChỉ trả về một đối tượng JSON hợp lệ. Không dùng Markdown, không thêm lời giải thích bên ngoài JSON.\n\nCấu trúc bắt buộc:\n{\n  \"trends\": [\n    {\n      \"name\": \"Tên xu hướng\",\n      \"score\": 75,\n      \"growth_rate\": 0,\n      \"direction\": \"stable\",\n      \"reason\": \"Lý do nhận định dựa trên dữ liệu\",\n      \"evidence\": \"Các tiêu đề hoặc mô tả video làm bằng chứng\"\n    }\n  ]\n}\n\nQUY TẮC:\n1. Chỉ phân tích dựa trên tiêu đề và mô tả video đã cung cấp.\n2. score là số nguyên từ 0 đến 100, thể hiện mức độ nổi bật tương đối trong tập dữ liệu.\n3. growth_rate là số nguyên. Nếu không có dữ liệu so sánh theo thời gian để tính tốc độ tăng trưởng, đặt bằng 0; không được tự bịa số liệu.\n4. direction chỉ được là \"rising\", \"stable\" hoặc \"falling\". Nếu không đủ dữ liệu theo thời gian để xác định chiều hướng, đặt \"stable\" và giải thích hạn chế trong reason.\n5. evidence phải là một chuỗi văn bản, không phải mảng.\n6. Không đưa nội dung giải thích của bạn vào giữa JSON.\n7. Không tự tạo thêm trường ngoài cấu trúc đã yêu cầu.\n8. Đảm bảo mọi chuỗi được đóng bằng dấu ngoặc kép hợp lệ. Nếu nội dung chứa dấu ngoặc kép, hãy escape đúng chuẩn JSON.\n9. Đóng đầy đủ tất cả dấu ngoặc nhọn và ngoặc vuông.\n10. Nếu không có đủ dữ liệu để xác định xu hướng, trả về {\"trends\": []}.\n11. Tối đa 5 xu hướng, không lặp lại các xu hướng có ý nghĩa giống nhau.\n12. Trước khi trả lời, tự kiểm tra tính hợp lệ của JSON."
             }
           ]
         },
         "options": {
-          "temperature": 0.1,
-          "num_predict": 300
+          "temperature": 0.2,
+          "num_predict": 1024
         }
       },
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        -800,
-        96
+        736,
+        64
       ],
-      "id": "3219062d-fd67-4952-9f8d-9845a233eae0",
-      "name": "06 - AI Trend Analysis",
+      "id": "2e6a30d8-3049-4f7a-a7b3-dd61a49443c8",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "executeOnce": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "ollamaApi": {
           "id": "XiC4iV2mHLf0nYr9",
           "name": "Ollama account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content;\n\nif (!raw) {\n  throw new Error('Ollama không trả về trường content');\n}\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error('Không thể phân tích JSON từ Ollama: ' + error.message);\n}\n\nif (!Array.isArray(parsed.trends)) {\n  throw new Error('Kết quả AI không chứa mảng trends hợp lệ');\n}\n\nreturn parsed.trends.map(trend => ({\n  json: {\n    name: trend.name,\n    score: trend.score,\n    growth_rate: trend.growth_rate,\n    direction: trend.direction,\n    reason: trend.reason,\n    evidence: trend.evidence\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        64
+      ],
+      "id": "9e49f21c-6284-4f82-b43f-2a7ab8e5b81e",
+      "name": "08 - Parse AI Trend Results"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    name: $json.name,\n    score: $json.score,\n    growth_rate: $json.growth_rate,\n    direction: $json.direction,\n    reason: $json.reason,\n    evidence: [$json.evidence]\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1328,
+        64
+      ],
+      "id": "aa4381d7-8314-4413-aa5b-ff7213be318b",
+      "name": "09 - Save Trends to Backend"
     }
   ],
   "pinData": {},
   "connections": {
-    "01 - Manual Test Trigger": {
+    "01 - Start WF06": {
       "main": [
         [
           {
-            "node": "02 - Get Competitor Contents",
+            "node": "03 - Get Competitors",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "01B - Daily Schedule (08:00)": {
+    "02 - Webhook Trigger WF06": {
       "main": [
         [
           {
-            "node": "02 - Get Competitor Contents",
+            "node": "03 - Get Competitors",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "02 - Get Competitor Contents": {
+    "03 - Get Competitors": {
       "main": [
         [
           {
-            "node": "03 - Get Content Analysis",
+            "node": "04 - Prepare Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "03 - Get Content Analysis": {
+    "04 - Prepare Input": {
       "main": [
         [
           {
-            "node": "04 - Get Performance KPI",
+            "node": "05 - Get Social Contents",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "04 - Get Performance KPI": {
+    "05 - Get Social Contents": {
       "main": [
         [
           {
-            "node": "05 - Aggregate Topics",
+            "node": "06 - Prepare Videos for AI",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "05 - Aggregate Topics": {
+    "06 - Prepare Videos for AI": {
       "main": [
         [
           {
-            "node": "06 - AI Trend Analysis",
+            "node": "Message a model",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "07 - Parse AI and Calculate Trend Score": {
+    "Message a model": {
       "main": [
         [
           {
-            "node": "08 - IF Trend Valid",
+            "node": "08 - Parse AI Trend Results",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "08 - IF Trend Valid": {
+    "08 - Parse AI Trend Results": {
       "main": [
         [
           {
-            "node": "09 - Save Trend to Backend",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "10 - Handle Invalid Trend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "06 - AI Trend Analysis": {
-      "main": [
-        [
-          {
-            "node": "07 - Parse AI and Calculate Trend Score",
+            "node": "09 - Save Trends to Backend",
             "type": "main",
             "index": 0
           }
@@ -345,7 +259,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "61fbd159-f57c-42f5-af5b-76238665c02d",
+  "versionId": "d6335687-b9f4-47de-91cf-40dc51845cff",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
