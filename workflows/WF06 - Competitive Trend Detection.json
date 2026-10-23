@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -432,
+        0,
         -16
       ],
-      "id": "7ef38d35-3e97-49ba-8cf9-e56e961327f7",
+      "id": "412d69a5-196a-499f-8777-3bab940006e7",
       "name": "01 - Start WF06"
     },
     {
@@ -22,10 +22,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -432,
+        0,
         176
       ],
-      "id": "55fe133f-e7d2-4fc5-98f9-46e271c1cb65",
+      "id": "6a8484c1-cad9-4cf7-a7ad-5ab23e416c7d",
       "name": "02 - Webhook Trigger WF06",
       "webhookId": "743f9f6c-7370-43fa-aaae-af3876221419"
     },
@@ -37,11 +37,25 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -160,
-        64
+        272,
+        80
       ],
-      "id": "ca24c171-cb8f-40d4-b85c-d6e44a6c095d",
+      "id": "571606ed-189d-4264-adcf-6b4aa112d45c",
       "name": "03 - Get Competitors"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        80
+      ],
+      "id": "01db3f7b-dc88-405f-976a-00d2456fd554",
+      "name": "05 - Get Social Contents"
     },
     {
       "parameters": {
@@ -60,25 +74,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        64,
-        64
+        496,
+        80
       ],
-      "id": "27f61290-ca37-40e5-97f1-e49acc64b440",
-      "name": "04 - Prepare Input"
-    },
-    {
-      "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        288,
-        64
-      ],
-      "id": "a462427f-873b-40a2-bff1-ef684d40fe69",
-      "name": "05 - Get Social Contents"
+      "id": "3d089db0-ab22-4f1a-ae3c-c8a7921cedea",
+      "name": "04 - Prepare Competitor Data"
     },
     {
       "parameters": {
@@ -87,19 +87,190 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        64
+        944,
+        80
       ],
-      "id": "92f4601c-3e01-4d24-ab92-ad346d94d06a",
-      "name": "06 - Prepare Videos for AI"
+      "id": "4f315f1b-bf9d-46b7-b3b3-90889a019722",
+      "name": "06 - Prepare Video Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "76434595-ee84-443d-9519-971ea7b458ee",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1168,
+        80
+      ],
+      "id": "de00cb67-8fde-4fb1-93e5-dd84512ac59e",
+      "name": "07 - Validate Video Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: false,\n    workflow: 'WF06',\n    message: 'Không có video hợp lệ để phân tích xu hướng.',\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        176
+      ],
+      "id": "5e480096-62c4-420f-ae0a-f2e99ec05ba2",
+      "name": "08 - Handle Empty Video Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst allowedDirections = new Set(['rising', 'stable', 'falling']);\nconst seenNames = new Set();\nconst results = [];\n\nfor (const item of items) {\n  const raw = item.json.content;\n\n  if (typeof raw !== 'string' || !raw.trim()) {\n    continue;\n  }\n\n  let parsed;\n\n  try {\n    parsed = JSON.parse(raw);\n  } catch {\n    // Bỏ qua kết quả JSON lỗi để các items hợp lệ vẫn được xử lý.\n    continue;\n  }\n\n  if (!Array.isArray(parsed.trends)) {\n    continue;\n  }\n\n  for (const trend of parsed.trends) {\n    if (!trend || typeof trend !== 'object') continue;\n\n    const name = String(trend.name ?? '').trim();\n    const reason = String(trend.reason ?? '').trim();\n    const evidence = String(trend.evidence ?? '').trim();\n    const score = Number(trend.score);\n    const growthRate = Number(trend.growth_rate);\n    const direction = trend.direction;\n\n    if (!name || !reason || !evidence) continue;\n    if (!Number.isFinite(score) || score < 0 || score > 100) continue;\n    if (!Number.isFinite(growthRate)) continue;\n    if (!allowedDirections.has(direction)) continue;\n\n    const key = name.toLocaleLowerCase('vi').replace(/\\s+/g, ' ');\n    if (seenNames.has(key)) continue;\n\n    seenNames.add(key);\n\n    results.push({\n      json: {\n        name,\n        score,\n        growth_rate: 0,\n        direction: 'stable',\n        reason: reason + ' Chưa có dữ liệu so sánh theo thời gian để xác minh chiều hướng tăng trưởng.',\n        evidence\n      }\n    });\n\n    if (results.length >= 5) break;\n  }\n\n  if (results.length >= 5) break;\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        0
+      ],
+      "id": "1ce9263a-6f64-4d0c-b233-d20ea18f5021",
+      "name": "10 - Validate and Parse AI Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "81abfb9b-612e-48ac-9d4d-d85cf35eb3df",
+              "leftValue": "={{ !!$json.name }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2400,
+        0
+      ],
+      "id": "dbc45e2f-b3f8-4a3d-8d05-48052d1dca19",
+      "name": "13 - Check New Trends"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    name: $json.name,\n    score: $json.score,\n    growth_rate: $json.growth_rate,\n    direction: $json.direction,\n    reason: $json.reason,\n    evidence: [$json.evidence]\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2608,
+        -112
+      ],
+      "id": "a11f9988-bc09-4a75-9e2a-4c59e68e1f3a",
+      "name": "14 - Save Trends to Backend"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2816,
+        -112
+      ],
+      "id": "9c61cf70-b627-4448-b4e7-700d37c77576",
+      "name": "15 - Respond with Saved Trends"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"workflow\": \"WF06\",\n  \"message\": \"Không có xu hướng mới cần lưu.\",\n  \"savedCount\": 0\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2608,
+        112
+      ],
+      "id": "56552384-f5a8-4e51-a1b5-c43129694e2f",
+      "name": "16 - Respond with No New Trends"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1952,
+        0
+      ],
+      "id": "ebe7e6e8-4bda-49c4-b336-ea2681ef05aa",
+      "name": "11 - Get Existing Trends",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalize = (value) =>\n  String(value ?? '')\n    .trim()\n    .replace(/\\s+/g, ' ')\n    .toLocaleLowerCase('vi');\n\nconst existing = $('11 - Get Existing Trends').first().json.data ?? [];\nconst candidates = $('10 - Validate and Parse AI Results').all();\n\nconst existingNames = new Set(\n  existing.map(t => normalize(t.name))\n);\n\nconst newNames = new Set();\n\nconst filtered = candidates.filter(item => {\n  const name = normalize(item.json.name);\n\n  if (!name || existingNames.has(name) || newNames.has(name)) {\n    return false;\n  }\n\n  newNames.add(name);\n  return true;\n});\n\nreturn filtered;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        0
+      ],
+      "id": "8910c72d-3ea5-4033-b55e-407e8cdce34a",
+      "name": "12 - Filter New Trends",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "qwen2.5:3b",
+          "value": "llama3.2:1b",
           "mode": "list",
-          "cachedResultName": "qwen2.5:3b"
+          "cachedResultName": "llama3.2:1b"
         },
         "messages": {
           "values": [
@@ -116,54 +287,55 @@
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        736,
-        64
+        1376,
+        0
       ],
-      "id": "2e6a30d8-3049-4f7a-a7b3-dd61a49443c8",
-      "name": "Message a model",
+      "id": "5ba7e13f-14d8-45f4-924b-3e534d019708",
+      "name": "09 - AI Trend Analysis",
       "retryOnFail": true,
       "executeOnce": true,
       "waitBetweenTries": 2000,
       "credentials": {
         "ollamaApi": {
-          "id": "XiC4iV2mHLf0nYr9",
+          "id": "l83Vzrt95BoSfMCw",
           "name": "Ollama account"
         }
       }
-    },
-    {
-      "parameters": {
-        "jsCode": "const raw = $input.first().json.content;\n\nif (!raw) {\n  throw new Error('Ollama không trả về trường content');\n}\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error('Không thể phân tích JSON từ Ollama: ' + error.message);\n}\n\nif (!Array.isArray(parsed.trends)) {\n  throw new Error('Kết quả AI không chứa mảng trends hợp lệ');\n}\n\nreturn parsed.trends.map(trend => ({\n  json: {\n    name: trend.name,\n    score: trend.score,\n    growth_rate: trend.growth_rate,\n    direction: trend.direction,\n    reason: trend.reason,\n    evidence: trend.evidence\n  }\n}));"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1104,
-        64
-      ],
-      "id": "9e49f21c-6284-4f82-b43f-2a7ab8e5b81e",
-      "name": "08 - Parse AI Trend Results"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{\n  {\n    name: $json.name,\n    score: $json.score,\n    growth_rate: $json.growth_rate,\n    direction: $json.direction,\n    reason: $json.reason,\n    evidence: [$json.evidence]\n  }\n}}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        1328,
-        64
-      ],
-      "id": "aa4381d7-8314-4413-aa5b-ff7213be318b",
-      "name": "09 - Save Trends to Backend"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "02 - Webhook Trigger WF06": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.apexdesign.id.vn",
+            "user-agent": "curl/8.18.0",
+            "content-length": "2",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "115.76.55.24",
+            "cf-ipcountry": "VN",
+            "cf-ray": "a4ef8b91ff409134-FRA",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-warp-tag-id": "6ea6ec09-c39a-4643-b7cf-c7e611316866",
+            "connection": "keep-alive",
+            "content-type": "application/json",
+            "x-forwarded-for": "115.76.55.24",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {},
+          "webhookUrl": "https://n8n.apexdesign.id.vn/webhook-test/wf06/trend-detection",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "01 - Start WF06": {
       "main": [
@@ -191,18 +363,7 @@
       "main": [
         [
           {
-            "node": "04 - Prepare Input",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "04 - Prepare Input": {
-      "main": [
-        [
-          {
-            "node": "05 - Get Social Contents",
+            "node": "04 - Prepare Competitor Data",
             "type": "main",
             "index": 0
           }
@@ -213,40 +374,120 @@
       "main": [
         [
           {
-            "node": "06 - Prepare Videos for AI",
+            "node": "06 - Prepare Video Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "06 - Prepare Videos for AI": {
+    "04 - Prepare Competitor Data": {
       "main": [
         [
           {
-            "node": "Message a model",
+            "node": "05 - Get Social Contents",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Message a model": {
+    "06 - Prepare Video Data": {
       "main": [
         [
           {
-            "node": "08 - Parse AI Trend Results",
+            "node": "07 - Validate Video Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "08 - Parse AI Trend Results": {
+    "07 - Validate Video Data": {
       "main": [
         [
           {
-            "node": "09 - Save Trends to Backend",
+            "node": "09 - AI Trend Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 - Handle Empty Video Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Validate and Parse AI Results": {
+      "main": [
+        [
+          {
+            "node": "11 - Get Existing Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - Check New Trends": {
+      "main": [
+        [
+          {
+            "node": "14 - Save Trends to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "16 - Respond with No New Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - Save Trends to Backend": {
+      "main": [
+        [
+          {
+            "node": "15 - Respond with Saved Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - Get Existing Trends": {
+      "main": [
+        [
+          {
+            "node": "12 - Filter New Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Filter New Trends": {
+      "main": [
+        [
+          {
+            "node": "13 - Check New Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - AI Trend Analysis": {
+      "main": [
+        [
+          {
+            "node": "10 - Validate and Parse AI Results",
             "type": "main",
             "index": 0
           }
@@ -254,17 +495,17 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "d6335687-b9f4-47de-91cf-40dc51845cff",
+  "versionId": "2c49905b-fe18-42d0-b194-fab6e88503db",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "Bt98il35QenWNiWb",
+  "id": "3NFjwKuamgs9Hppy",
   "tags": []
 }
