@@ -18,7 +18,10 @@ export function validateN8nWebhookConfig(workflowCode: N8nWorkflowCode, configur
   } catch {
     throw new N8nWebhookError(workflowCode, 'NOT_CONFIGURED', 503, `Webhook ${workflowCode} chưa được cấu hình hợp lệ trên máy chủ.`);
   }
-  if (url.protocol !== 'https:' || url.username || url.password || url.hash || !configuredToken?.trim()) {
+  const isPrivate172 = /^172\.(1[6-9]|2[0-9]|3[01])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/.test(url.hostname);
+  const isLocalhost = ['localhost', '127.0.0.1', 'host.docker.internal'].includes(url.hostname) || isPrivate172;
+  const isValidProtocol = url.protocol === 'https:' || (url.protocol === 'http:' && isLocalhost);
+  if (!isValidProtocol || url.username || url.password || url.hash || !configuredToken?.trim()) {
     throw new N8nWebhookError(workflowCode, 'NOT_CONFIGURED', 503, `Webhook ${workflowCode} chưa được cấu hình hợp lệ trên máy chủ.`);
   }
   return { url, token: configuredToken.trim() };
