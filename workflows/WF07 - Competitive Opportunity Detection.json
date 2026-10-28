@@ -2,178 +2,555 @@
   "name": "WF07 - Competitive Opportunity Detection",
   "nodes": [
     {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2128,
+        944
+      ],
+      "id": "858d4b9b-fa91-4581-aeb4-f23d9cce794b",
+      "name": "01 - Manual Trigger"
+    },
+    {
       "parameters": {
         "httpMethod": "POST",
-        "path": "wf07-detect-opportunities",
+        "path": "wf07/opportunities",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -608,
-        -80
+        -2128,
+        1136
       ],
-      "id": "f50805d0-64ba-4375-9370-14142882f680",
-      "name": "02 - Webhook Trigger WF07",
-      "webhookId": "4d45c687-f0cc-4139-a9f5-ff06b248472b"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -608,
-        -256
-      ],
-      "id": "652a9d1f-1210-468b-8d4f-c52552ee4bb8",
-      "name": "01 - Srart WF07"
-    },
-    {
-      "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        -304,
-        -352
-      ],
-      "id": "9f315e42-006b-4235-9eb6-260d15bd7f7e",
-      "name": "03 - Get AI Analyses"
-    },
-    {
-      "parameters": {
-        "jsCode": "const response = $input.first().json;\n\nif (response.success !== true) {\n  throw new Error('API AI Analyses trả về success không hợp lệ');\n}\n\nif (!Array.isArray(response.data)) {\n  throw new Error('API AI Analyses không trả về mảng data');\n}\n\nconst valid = [];\nconst invalid = [];\n\nfor (const row of response.data) {\n  const topic = row.topic?.trim();\n  const summary = row.summary?.trim();\n  const social = row.socialContent;\n\n  if (!topic || !summary || !social?.title || !social?.competitor?.name) {\n    invalid.push({\n      id: row.id ?? null,\n      reason: 'Thiếu topic, summary, title hoặc tên đối thủ',\n    });\n    continue;\n  }\n\n  valid.push({\n    json: {\n      analysisId: row.id,\n      contentId: row.contentId,\n      topic,\n      category: row.category ?? null,\n      contentType: row.contentType ?? null,\n      sentiment: row.sentiment ?? null,\n      keywords: Array.isArray(row.keywords) ? row.keywords : [],\n      summary,\n      targetAudience: row.targetAudience ?? null,\n      keyMessage: row.keyMessage ?? null,\n      competitor: social.competitor.name,\n      competitorId: social.competitorId ?? null,\n      platform: social.platform ?? null,\n      title: social.title,\n      url: social.url ?? null,\n      publishedAt: social.publishedAt ?? null,\n    },\n  });\n}\n\nreturn valid.length > 0\n  ? valid\n  : [{\n      json: {\n        error: true,\n        message: 'Không có bản phân tích nào đạt yêu cầu',\n        invalidCount: invalid.length,\n        invalidRecords: invalid,\n      },\n    }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -96,
-        -352
-      ],
-      "id": "74792cc3-8f74-4446-8a65-1eb1a172a212",
-      "name": "04 - Validate AI Analyses"
+      "id": "bd6d1b0f-2c9b-4a79-b89d-446b0d131be4",
+      "name": "02 - Webhook Trigger",
+      "webhookId": "wf07-detect-hook"
     },
     {
       "parameters": {
         "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
         "options": {
           "response": {
-            "response": {
-              "responseFormat": "json"
-            }
+            "response": {}
           }
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -304,
-        -176
+        -1920,
+        912
       ],
-      "id": "ce200cd5-20f2-46cc-9eb7-fb824d0084cc",
-      "name": "05 - Get Trends",
-      "executeOnce": false
+      "id": "fba4e69e-880f-49db-9129-c6546dfb38b0",
+      "name": "03 - Get Active Trends"
     },
     {
       "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-analyses",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1920,
+        1152
+      ],
+      "id": "636c35f1-ae2f-4ac3-bbf9-98710ec1494d",
+      "name": "04 - Get Competitor Performance"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0da947de-16ea-4167-b83c-98676713e874",
+              "name": "trends_response",
+              "value": "={{ $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1712,
+        912
+      ],
+      "id": "880a3278-f2d5-4395-b323-14df0b722b3c",
+      "name": "03A - Label Trends Response"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1504,
+        1024
+      ],
+      "id": "51367655-c15c-494d-93dc-c40e04b77b2b",
+      "name": "05 - Merge Trends & Performance"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f114c00-f19f-4ba2-8f92-edecae373e74",
+              "name": "performance_response",
+              "value": "={{ $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1712,
+        1152
+      ],
+      "id": "1c86e364-b59a-40e6-9de5-9c50a03409fb",
+      "name": "04A - Label Performance Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b31f5149-c924-4035-a121-9c83d90ca7b9",
+              "name": "trends",
+              "value": "={{ Array.isArray($json.trends_response?.data) ? $json.trends_response.data : (Array.isArray($json.trends_response?.trends) ? $json.trends_response.trends : []) }}",
+              "type": "array"
+            },
+            {
+              "id": "d7c513e8-e4d4-4e51-9eac-a1fa80a6fc54",
+              "name": "performance",
+              "value": "={{ Array.isArray($json.performance_response?.data) ? $json.performance_response.data : (Array.isArray($json.performance_response?.performance) ? $json.performance_response.performance : []) }}",
+              "type": "array"
+            },
+            {
+              "id": "225a7379-a8c9-4d88-95a1-1c1364582ba4",
+              "name": "input_checked_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1296,
+        1024
+      ],
+      "id": "0194eec9-a481-4700-9a8e-e2435a37ed53",
+      "name": "06 - Normalize Input Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "653437ff-37db-43e8-ba91-2413f279523f",
+              "leftValue": "={{ $json.trends.length > 0 || $json.performance.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1088,
+        1024
+      ],
+      "id": "2b4e22cb-0e5c-41e2-bed4-e00f7159f331",
+      "name": "07 - Check Input Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst trends = Array.isArray(d.trends) ? d.trends : [];\nconst performance = Array.isArray(d.performance) ? d.performance : [];\nconst trendSummary = trends.map(t => ({\n  topic: String(t.topic ?? t.name ?? t.title ?? '').trim(),\n  growth_rate: Number(t.growth_rate ?? t.growthRate ?? 0),\n  category: String(t.category ?? '').trim()\n}));\nconst performanceSummary = performance.map(p => ({\n  competitor: String(p.competitor_name ?? p.channel_name ?? p.name ?? '').trim(),\n  content_title: String(p.title ?? p.content_title ?? '').trim(),\n  views: Number(p.views ?? p.view_count ?? 0),\n  engagement_rate: Number(p.engagement_rate ?? p.engagementRate ?? 0),\n  category: String(p.category ?? '').trim()\n}));\nreturn [{json:{trends:trendSummary, performance:performanceSummary, input_checked_at:d.input_checked_at}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        912
+      ],
+      "id": "9ff4950d-6206-4e4d-93be-0e54aa1ae608",
+      "name": "08 - Prepare AI Analysis Context"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ 'Bạn là chuyên gia phân tích cạnh tranh. Dựa CHỈ trên dữ liệu JSON bên dưới, hãy phát hiện tối đa 3 cơ hội cạnh tranh. Không bịa số liệu. Nếu dữ liệu không đủ, hãy nêu rõ hạn chế trong description. Trả DUY NHẤT JSON hợp lệ theo cấu trúc {\"opportunities\":[{\"title\":\"...\",\"description\":\"...\",\"potential_score\":0,\"recommended_action\":\"...\"}]}. potential_score phải là số nguyên từ 0 đến 100.\\nDỮ LIỆU:\\n' + JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "num_predict": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        912
+      ],
+      "id": "27c2f681-0457-46c2-af0c-73cdb5310d9c",
+      "name": "09 - Ollama Opportunity Analysis",
+      "credentials": {
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst raw = String(response.content ?? response.text ?? response.message?.content ?? '').trim();\nif (!raw) throw new Error('Ollama trả về nội dung rỗng.');\nconst clean = raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/,'').trim();\nlet parsed;\ntry { parsed = JSON.parse(clean); } catch (e) { throw new Error('Ollama không trả về JSON hợp lệ: ' + e.message); }\nif (!Array.isArray(parsed.opportunities)) throw new Error('JSON AI thiếu mảng opportunities.');\nconst opportunities = parsed.opportunities.slice(0,3).map((o, index) => {\n  const score = Number(o.potential_score);\n  const errors = [];\n  if (!String(o.title ?? '').trim()) errors.push('Thiếu title');\n  if (!String(o.description ?? '').trim()) errors.push('Thiếu description');\n  if (!Number.isInteger(score) || score < 0 || score > 100) errors.push('potential_score phải là số nguyên 0–100');\n  if (!String(o.recommended_action ?? '').trim()) errors.push('Thiếu recommended_action');\n  return {json:{title:String(o.title ?? '').trim(), description:String(o.description ?? '').trim(), potential_score:score, recommended_action:String(o.recommended_action ?? '').trim(), is_valid:errors.length===0, validation_errors:errors, rank:index+1}};\n});\nif (opportunities.length === 0) return [{json:{no_opportunities:true, message:'AI không phát hiện cơ hội nào từ dữ liệu đầu vào.'}}];\nreturn opportunities;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        912
+      ],
+      "id": "7e9a5185-2628-4a24-a972-33909767fbab",
+      "name": "10 - Parse & Validate AI JSON"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8470256a-fc52-4fbe-8634-9747b8e5728d",
+              "leftValue": "={{ $json.no_opportunities !== true && $json.is_valid === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        912
+      ],
+      "id": "91d23a9c-4de6-409f-a121-04d44ca581a9",
+      "name": "11 - IF Opportunity Valid"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { title: $json.title, description: $json.description, potential_score: $json.potential_score, recommended_action: $json.recommended_action } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -304,
-        0
+        64,
+        800
       ],
-      "id": "1d3c3ca1-2655-4db6-aa97-4fd15f4d2de3",
-      "name": "06 - Get Performance Data"
+      "id": "7fa50b0f-6c44-4f3a-9beb-fb4a2657704e",
+      "name": "12 - Save Opportunity to Backend"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, workflow: 'WF07', opportunity: $('10 - Parse & Validate AI JSON').item.json, saved: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        800
+      ],
+      "id": "294ab709-fd29-4761-8c2a-234d8ba4b004",
+      "name": "13 - Respond Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, workflow: 'WF07', error: 'Dữ liệu đầu vào không đủ hoặc không hợp lệ.' } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -880,
+        1152
+      ],
+      "id": "0d23c30a-b904-4bcd-882d-2294cf7a35c1",
+      "name": "14 - Respond Input Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, workflow: 'WF07', error: 'Kết quả AI không hợp lệ hoặc không có cơ hội hợp lệ.', details: $json.validation_errors ?? [], no_opportunities: $json.no_opportunities ?? false } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        1040
+      ],
+      "id": "014ecfd7-a415-40a7-a13d-c9b2b6c43e3e",
+      "name": "15 - Respond Validation Error"
     }
   ],
   "pinData": {},
   "connections": {
-    "02 - Webhook Trigger WF07": {
+    "01 - Manual Trigger": {
       "main": [
         [
           {
-            "node": "03 - Get AI Analyses",
+            "node": "03 - Get Active Trends",
             "type": "main",
             "index": 0
           },
           {
-            "node": "05 - Get Trends",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "06 - Get Performance Data",
+            "node": "04 - Get Competitor Performance",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "01 - Srart WF07": {
+    "02 - Webhook Trigger": {
       "main": [
         [
           {
-            "node": "03 - Get AI Analyses",
+            "node": "03 - Get Active Trends",
             "type": "main",
             "index": 0
           },
           {
-            "node": "05 - Get Trends",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "06 - Get Performance Data",
+            "node": "04 - Get Competitor Performance",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "03 - Get AI Analyses": {
+    "03 - Get Active Trends": {
       "main": [
         [
           {
-            "node": "04 - Validate AI Analyses",
+            "node": "03A - Label Trends Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "04 - Validate AI Analyses": {
+    "03A - Label Trends Response": {
       "main": [
-        []
+        [
+          {
+            "node": "05 - Merge Trends & Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "05 - Get Trends": {
+    "04 - Get Competitor Performance": {
       "main": [
-        []
+        [
+          {
+            "node": "04A - Label Performance Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04A - Label Performance Response": {
+      "main": [
+        [
+          {
+            "node": "05 - Merge Trends & Performance",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "05 - Merge Trends & Performance": {
+      "main": [
+        [
+          {
+            "node": "06 - Normalize Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Normalize Input Data": {
+      "main": [
+        [
+          {
+            "node": "07 - Check Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Check Input Data": {
+      "main": [
+        [
+          {
+            "node": "08 - Prepare AI Analysis Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "14 - Respond Input Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Prepare AI Analysis Context": {
+      "main": [
+        [
+          {
+            "node": "09 - Ollama Opportunity Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Ollama Opportunity Analysis": {
+      "main": [
+        [
+          {
+            "node": "10 - Parse & Validate AI JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Parse & Validate AI JSON": {
+      "main": [
+        [
+          {
+            "node": "11 - IF Opportunity Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - IF Opportunity Valid": {
+      "main": [
+        [
+          {
+            "node": "12 - Save Opportunity to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "15 - Respond Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Save Opportunity to Backend": {
+      "main": [
+        [
+          {
+            "node": "13 - Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": true
+    "binaryMode": "separate"
   },
-  "versionId": "e2b60bd8-f2bf-4281-8656-9b2bbb598365",
+  "versionId": "bbcedd51-5e2a-4c85-be1e-6d23529910e6",
   "meta": {
-    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
   },
   "nodeGroups": [],
-  "id": "jjJ0lOb2k0yhNcVx",
+  "id": "qB0wNN2G388PS0vU",
   "tags": []
 }

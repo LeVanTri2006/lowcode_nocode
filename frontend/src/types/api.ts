@@ -8,3 +8,45 @@ export interface PerformanceAnalysis { id: number; competitorId: number; platfor
 export interface MonitoringMetricSnapshot { views: number; likes: number; comments: number; shares: number | null; capturedAt: string }
 export interface MonitoringData { contentId: string; socialContentId: number; competitorId: number; competitorName: string; platform: string; title: string; metrics: MonitoringMetricSnapshot[] }
 export interface MonitoringAlert { id: number; contentId: number; competitorId: number; platform: string; alertType: 'views_growth' | 'likes_growth' | 'comments_growth' | string; message: string; viewsChange: number; likesChange: number; commentsChange: number; viewsGrowthRate: number; likesGrowthRate: number; commentsGrowthRate: number; createdAt: string; competitor?: { name: string } | null; socialContent?: { contentId: string; title: string; url: string; platform: string } | null }
+
+export interface ReportItem {
+  id: number;
+  reportType: string;
+  title: string;
+  executiveSummary: string;
+  period: { from?: string; to?: string } | any;
+  reportData: any;
+  generatedAt: string;
+}
+
+export interface StrategyItem {
+  id: number;
+  title: string;
+  objective: string;
+  description: string;
+  priority: string;
+  confidence: number;
+  evidence: any;
+  createdAt: string;
+}
+
+export interface TrendItem {
+  id: number;
+  name: string;
+  score: number;
+  growthRate: number;
+  direction: string;
+  reason: string;
+  evidence: any;
+  detectedAt: string;
+}
+
+export interface OpportunityItem {
+  id: number;
+  title: string;
+  score: number;
+  priority: string;
+  reason: string;
+  evidence: any;
+  createdAt: string;
+}
