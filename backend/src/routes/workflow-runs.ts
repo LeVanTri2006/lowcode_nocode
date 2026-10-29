@@ -41,6 +41,11 @@ export function createWorkflowRunRouter(dispatchWebhook: DispatchWebhook = dispa
   router.post('/wf01/run', requireRole('operator'), createWorkflowRunHandler(dispatchWebhook));
   router.post('/wf03/run', requireRole('operator'), createWf03RunHandler());
   router.post('/wf04/run', requireRole('operator'), createWf04RunHandler());
+  router.post('/wf06/run', requireRole('operator'), createGenericWfRunHandler('WF06'));
+  router.post('/wf07/run', requireRole('operator'), createGenericWfRunHandler('WF07'));
+  router.post('/wf08/run', requireRole('operator'), createGenericWfRunHandler('WF08'));
+  router.post('/wf09/run', requireRole('operator'), createGenericWfRunHandler('WF09'));
+  router.post('/wf10/run', requireRole('operator'), createGenericWfRunHandler('WF10'));
   return router;
 }
 
@@ -191,6 +196,42 @@ export function createWf04RunHandler({
     } finally {
       activeOperators.delete(username);
     }
+  };
+}
+
+export function createGenericWfRunHandler(workflowCode: 'WF06' | 'WF07' | 'WF08' | 'WF09' | 'WF10'): RequestHandler {
+  return async (req: Request, res: Response) => {
+    if (!hasTrustedOrigin(req.get('origin'), getAllowedOrigins())) {
+      res.status(403).json({ success: false, code: 'ORIGIN_NOT_ALLOWED', message: 'Nguồn yêu cầu không được phép.' });
+      return;
+    }
+    const envUrl = process.env[`N8N_${workflowCode}_WEBHOOK_URL`];
+    const envToken = process.env[`N8N_${workflowCode}_WEBHOOK_TOKEN`];
+
+    if (envUrl && envToken) {
+      try {
+        await dispatchN8nWebhook(workflowCode, envUrl, envToken);
+        res.status(202).json({
+          success: true,
+          data: { status: 'accepted' as const },
+          message: `Đã gửi yêu cầu chạy ${workflowCode} tới Webhook n8n.`,
+        });
+        return;
+      } catch (error) {
+        if (error instanceof N8nWebhookError) {
+          res.status(error.status).json({ success: false, code: error.code, message: error.message });
+          return;
+        }
+        res.status(502).json({ success: false, code: `${workflowCode}_WEBHOOK_ERROR`, message: `Không thể kết nối Webhook ${workflowCode}.` });
+        return;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { status: 'accepted' as const },
+      message: `Đã tiếp nhận yêu cầu chạy ${workflowCode}.`,
+    });
   };
 }
 

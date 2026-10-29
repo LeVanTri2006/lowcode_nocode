@@ -1,0 +1,479 @@
+{
+  "name": "WF10 - Strategic Report Synthesis",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        864
+      ],
+      "id": "c8f6238d-1cda-4401-8c83-9d0c5b4da48b",
+      "name": "01 - Start WF10"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf10/reports",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -1200,
+        1072
+      ],
+      "id": "d0ad5507-e9fc-4d1f-a653-13f95441bf77",
+      "name": "02 - Webhook Trigger WF10",
+      "webhookId": "wf10-report-hook"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/strategies",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -960,
+        976
+      ],
+      "id": "7d8c3dd5-cc43-4f20-80e8-5a10d8fbbb9e",
+      "name": "03 - Get Strategies"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -736,
+        976
+      ],
+      "id": "14ff0622-667e-44a3-9465-4e527892897d",
+      "name": "04 - Get Opportunities"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/risks",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -512,
+        976
+      ],
+      "id": "e8ff5789-c028-47c7-b10c-5421e47567ba",
+      "name": "05 - Get Risks"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractList(response, keys) {\n  let value = response?.data ?? response?.body ?? response;\n  if (Array.isArray(value)) return value;\n  if (!value || typeof value !== 'object') return [];\n  for (const key of keys) {\n    if (Array.isArray(value[key])) return value[key];\n  }\n  if (value.data && typeof value.data === 'object') {\n    if (Array.isArray(value.data)) return value.data;\n    for (const key of keys) {\n      if (Array.isArray(value.data[key])) return value.data[key];\n    }\n  }\n  return [];\n}\n\nconst strategies = extractList($('03 - Get Strategies').first().json, ['strategies', 'items', 'results']);\nconst opportunities = extractList($('04 - Get Opportunities').first().json, ['opportunities', 'items', 'results']);\nconst risks = extractList($('05 - Get Risks').first().json, ['risks', 'items', 'results']);\n\nconst latestStrategies = strategies.slice(-20);\nconst selectedOpportunities = opportunities.slice(0, 30);\nconst selectedRisks = risks.slice(0, 30);\nconst analyzedAt = new Date().toISOString();\nconst hasInputData = latestStrategies.length > 0 || selectedOpportunities.length > 0 || selectedRisks.length > 0;\n\nconst prompt = `Bạn là chuyên gia tổng hợp báo cáo điều hành về chiến lược cạnh tranh. Hãy tổng hợp dữ liệu được cung cấp thành báo cáo bằng tiếng Việt.\\n\\nQUY TẮC:\\n- Chỉ sử dụng thông tin có trong dữ liệu đầu vào, không tự bịa số liệu hoặc sự kiện.\\n- Phân biệt dữ kiện đã có và nhận định suy luận.\\n- Nêu rõ dữ liệu thiếu, mâu thuẫn hoặc chưa đủ để kết luận.\\n- Tổng hợp chiến lược, cơ hội và rủi ro thành một báo cáo thống nhất.\\n- Không khẳng định kết quả tương lai chắc chắn xảy ra.\\n- Trả về duy nhất JSON hợp lệ, không có Markdown.\\n\\nCẤU TRÚC JSON:\\n{\\n  \"report_title\": \"Tiêu đề báo cáo\",\\n  \"executive_summary\": \"Tóm tắt điều hành\",\\n  \"key_findings\": [\"Phát hiện chính\"],\\n  \"opportunities\": [\"Cơ hội đáng chú ý\"],\\n  \"risks\": [\"Rủi ro đáng chú ý\"],\\n  \"strategic_recommendations\": [\"Khuyến nghị cụ thể\"],\\n  \"limitations\": [\"Hạn chế dữ liệu\"]\\n}\\n\\nCHIẾN LƯỢC (${latestStrategies.length} bản ghi):\\n${JSON.stringify(latestStrategies)}\\n\\nCƠ HỘI (${selectedOpportunities.length} bản ghi):\\n${JSON.stringify(selectedOpportunities)}\\n\\nRỦI RO (${selectedRisks.length} bản ghi):\\n${JSON.stringify(selectedRisks)}\\n\\nThời điểm tổng hợp: ${analyzedAt}`;\n\nreturn [{ json: { analyzed_at: analyzedAt, strategies: latestStrategies, opportunities: selectedOpportunities, risks: selectedRisks, source_counts: { strategies: latestStrategies.length, opportunities: selectedOpportunities.length, risks: selectedRisks.length }, has_input_data: hasInputData, prompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        976
+      ],
+      "id": "2785e96d-2d11-46fe-9f46-eaa797829956",
+      "name": "06 - Normalize Data and Prepare Report"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf10-has-data",
+              "leftValue": "={{ $json.has_input_data }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        976
+      ],
+      "id": "870e8251-909f-4a55-97f1-0860dc063954",
+      "name": "07 - IF Input Data Available"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $('06 - Normalize Data and Prepare Report').first().json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "num_predict": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        176,
+        864
+      ],
+      "id": "7ecafc8c-5bf4-416f-b9f3-e56884c6641c",
+      "name": "08 - Ollama Generate Strategic Report",
+      "credentials": {
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst raw = result.content ?? result.text ?? result.response ?? result.output ?? result.message?.content ?? result.choices?.[0]?.message?.content;\nif (typeof raw !== 'string' || !raw.trim()) {\n  return [{ json: { parse_ok: false, parse_error: 'AI không trả về nội dung văn bản hợp lệ.', raw_response: result } }];\n}\ntry {\n  const clean = raw.trim().replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();\n  const start = clean.indexOf('{');\n  const end = clean.lastIndexOf('}');\n  if (start < 0 || end <= start) throw new Error('Không tìm thấy JSON trong phản hồi AI.');\n  const parsed = JSON.parse(clean.slice(start, end + 1));\n  return [{ json: { ...parsed, parse_ok: true } }];\n} catch (error) {\n  return [{ json: { parse_ok: false, parse_error: error.message, raw_response: raw } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        864
+      ],
+      "id": "f4a22148-8f93-4bec-8616-d6242f278e40",
+      "name": "09 - Parse AI Report"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const errors = [];\n  if (d.parse_ok !== true) errors.push(d.parse_error || 'Không phân tích được JSON AI.');\n  for (const field of ['report_title', 'executive_summary']) {\n    if (typeof d[field] !== 'string' || !d[field].trim()) errors.push(`Thiếu hoặc sai kiểu dữ liệu: ${field}.`);\n  }\n  for (const field of ['key_findings', 'opportunities', 'risks', 'strategic_recommendations', 'limitations']) {\n    if (!Array.isArray(d[field]) || !d[field].every(value => typeof value === 'string')) errors.push(`${field} phải là mảng chuỗi.`);\n  }\n  if (Array.isArray(d.strategic_recommendations) && d.strategic_recommendations.length < 2) errors.push('Cần ít nhất 2 khuyến nghị chiến lược.');\n  return { json: { ...d, is_valid: errors.length === 0, validation_errors: errors } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        864
+      ],
+      "id": "1bf31e76-2c06-4b00-a7a9-562b6f015253",
+      "name": "10 - Validate Report Content"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf10-report-valid",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        864
+      ],
+      "id": "d6909123-fc99-4018-866d-9a90d29a29e9",
+      "name": "11 - IF Report Valid"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/reports",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { report_title: $('10 - Validate Report Content').first().json.report_title, executive_summary: $('10 - Validate Report Content').first().json.executive_summary, key_findings: $('10 - Validate Report Content').first().json.key_findings, opportunities: $('10 - Validate Report Content').first().json.opportunities, risks: $('10 - Validate Report Content').first().json.risks, strategic_recommendations: $('10 - Validate Report Content').first().json.strategic_recommendations, limitations: $('10 - Validate Report Content').first().json.limitations, generated_at: $('06 - Normalize Data and Prepare Report').first().json.analyzed_at, source_counts: $('06 - Normalize Data and Prepare Report').first().json.source_counts } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1376,
+        752
+      ],
+      "id": "01de44ef-61f1-41b9-b789-9caad52200ae",
+      "name": "12 - Save Report Through Backend"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, message: 'Báo cáo đã được gửi tới Backend.', report: $('10 - Validate Report Content').first().json, backend_response: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1584,
+        752
+      ],
+      "id": "5cef0bc7-e676-4174-a793-8f9265626d6b",
+      "name": "13 - Respond Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, message: 'Không thể tạo báo cáo hợp lệ.', errors: $json.validation_errors ?? [$json.parse_error ?? 'Dữ liệu báo cáo không hợp lệ.'] } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1168,
+        976
+      ],
+      "id": "71639c6d-c0e5-4797-9cb0-22341efe59d9",
+      "name": "14 - Respond Invalid Report"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, message: 'Không có dữ liệu chiến lược, cơ hội hoặc rủi ro để tổng hợp báo cáo.', source_counts: $json.source_counts } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        176,
+        1104
+      ],
+      "id": "304803cc-aff7-4acb-b971-084962734298",
+      "name": "15 - Respond No Input Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $('10 - Validate Report Content').first().json;\nconst source = $('06 - Normalize Data and Prepare Report').first().json;\nreturn [{ json: { report_title: report.report_title, executive_summary: report.executive_summary, key_findings: report.key_findings, opportunities: report.opportunities, risks: report.risks, strategic_recommendations: report.strategic_recommendations, limitations: report.limitations, generated_at: source.analyzed_at, source_counts: source.source_counts, report_valid: report.is_valid } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        752
+      ],
+      "id": "e6f24e7c-54ed-4783-99eb-e3e9f00bf7fa",
+      "name": "16 - Prepare Report Record"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF10": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Strategies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Webhook Trigger WF10": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Strategies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Strategies": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Opportunities": {
+      "main": [
+        [
+          {
+            "node": "05 - Get Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Get Risks": {
+      "main": [
+        [
+          {
+            "node": "06 - Normalize Data and Prepare Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Normalize Data and Prepare Report": {
+      "main": [
+        [
+          {
+            "node": "07 - IF Input Data Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - IF Input Data Available": {
+      "main": [
+        [
+          {
+            "node": "08 - Ollama Generate Strategic Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "15 - Respond No Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Ollama Generate Strategic Report": {
+      "main": [
+        [
+          {
+            "node": "09 - Parse AI Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Parse AI Report": {
+      "main": [
+        [
+          {
+            "node": "10 - Validate Report Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Validate Report Content": {
+      "main": [
+        [
+          {
+            "node": "11 - IF Report Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - IF Report Valid": {
+      "main": [
+        [
+          {
+            "node": "16 - Prepare Report Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "14 - Respond Invalid Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16 - Prepare Report Record": {
+      "main": [
+        [
+          {
+            "node": "12 - Save Report Through Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Save Report Through Backend": {
+      "main": [
+        [
+          {
+            "node": "13 - Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "af429179-f78a-4890-8fdc-ad4f35453ec9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+  },
+  "nodeGroups": [],
+  "id": "VGE9JSCVp7xtFJFe",
+  "tags": []
+}

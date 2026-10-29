@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import {
   Lightbulb,
@@ -14,10 +14,7 @@ import {
   TrendingUp,
   PieChart,
 } from 'lucide-react';
-import {
-  INITIAL_OPPORTUNITIES,
-  type OpportunityItem,
-} from '../../mocks/opportunities';
+import { getList } from '../../services/api/client';
 import { useToast } from '../../components/common/Toast';
 import './WF07Page.css';
 
@@ -29,19 +26,47 @@ const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 1
 
 export const WF07Page: React.FC = () => {
   const { showToast } = useToast();
-  const [opportunities] = useState<OpportunityItem[]>(INITIAL_OPPORTUNITIES);
-  const [selectedOppId, setSelectedOppId] = useState<number>(1);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedOppId, setSelectedOppId] = useState<number | string | null>(null);
   const [activeTab, setActiveTab] = useState<'ai' | 'keywords' | 'competitors' | 'ideas'>('ai');
 
-  const selectedOpp = opportunities.find((o) => o.id === selectedOppId) || opportunities[0];
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const potentialKeywords = [
-    { rank: 1, kw: 'du lịch việt nam', searches: '120K', trend: '+45%', level: 'Cao' },
-    { rank: 2, kw: 'đảo đẹp việt nam', searches: '85K', trend: '+62%', level: 'Cao' },
-    { rank: 3, kw: 'kinh nghiệm du lịch', searches: '62K', trend: '+28%', level: 'Trung bình' },
-    { rank: 4, kw: 'resort phú quốc', searches: '48K', trend: '+35%', level: 'Trung bình' },
-    { rank: 5, kw: 'ẩm thực đà nẵng', searches: '42K', trend: '+18%', level: 'Trung bình' },
-  ];
+    getList<any>('/api/opportunities', controller.signal)
+      .then((data) => {
+        setOpportunities(data);
+        setSelectedOppId(data[0]?.id ?? null);
+        setApiError('');
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setApiError(error instanceof Error ? error.message : 'Không thể tải dữ liệu cơ hội.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, []);
+
+  const filteredOpportunities = opportunities.filter((item) =>
+    String(item.title ?? item.name ?? '')
+      .toLowerCase()
+      .includes(searchText.toLowerCase())
+  );
+  const selectedOpp = filteredOpportunities.find((item) => item.id === selectedOppId)
+    ?? filteredOpportunities[0]
+    ?? null;
+  const highPotentialCount = opportunities.filter((item) =>
+    String(item.potentialLevel ?? item.level ?? item.severity ?? '').toLowerCase().includes('cao')
+  ).length;
+  const uniqueKeywords = new Set(
+    opportunities.flatMap((item) => Array.isArray(item.keywords) ? item.keywords : [])
+  ).size;
+
+  const potentialKeywords: any[] = [];
 
   const copyTitle = (text: string) => {
     navigator.clipboard?.writeText(text);
@@ -64,8 +89,8 @@ export const WF07Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Tổng cơ hội nội dung</span>
-            <span className="kpi-number">125</span>
-            <span className="kpi-subtext positive">↗ +28.9% so với tuần trước</span>
+            <span className="kpi-number">{opportunities.length}</span>
+            <span className="kpi-subtext">Số cơ hội hiện có từ API</span>
           </div>
         </div>
 
@@ -75,8 +100,8 @@ export const WF07Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Cơ hội tiềm năng cao</span>
-            <span className="kpi-number">48</span>
-            <span className="kpi-subtext positive">↗ +33.3% so với tuần trước</span>
+            <span className="kpi-number">{highPotentialCount}</span>
+            <span className="kpi-subtext">Theo mức tiềm năng trong dữ liệu</span>
           </div>
         </div>
 
@@ -86,8 +111,8 @@ export const WF07Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Chủ đề đang hot</span>
-            <span className="kpi-number">32</span>
-            <span className="kpi-subtext positive">↗ +18.5% so với tuần trước</span>
+            <span className="kpi-number">—</span>
+            <span className="kpi-subtext">Chưa có dữ liệu xu hướng</span>
           </div>
         </div>
 
@@ -97,8 +122,8 @@ export const WF07Page: React.FC = () => {
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Từ khóa đề xuất</span>
-            <span className="kpi-number">256</span>
-            <span className="kpi-subtext positive">↗ +42.1% so với tuần trước</span>
+            <span className="kpi-number">{uniqueKeywords}</span>
+            <span className="kpi-subtext">Từ khóa trong danh sách cơ hội</span>
           </div>
         </div>
       </div>
@@ -120,6 +145,8 @@ export const WF07Page: React.FC = () => {
                   type="text"
                   placeholder="Tìm kiếm chủ đề, từ khóa..."
                   className="table-search-input"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
                 />
               </div>
 
@@ -160,8 +187,16 @@ export const WF07Page: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {opportunities.map((item, idx) => {
-                  const isCurrent = item.id === selectedOpp.id;
+                {loading ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }}>Đang tải cơ hội từ máy chủ...</td></tr>
+                ) : apiError ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }}>Không tải được dữ liệu: {apiError}</td></tr>
+                ) : filteredOpportunities.length === 0 ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }}>
+                    {searchText ? 'Không tìm thấy cơ hội phù hợp.' : 'Chưa có cơ hội nội dung. Hãy chạy workflow phân tích để tạo dữ liệu.'}
+                  </td></tr>
+                ) : filteredOpportunities.map((item, idx) => {
+                  const isCurrent = item.id === selectedOpp?.id;
                   return (
                     <tr
                       key={item.id}
@@ -171,31 +206,31 @@ export const WF07Page: React.FC = () => {
                       <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={isCurrent} readOnly /></td>
                       <td className="text-muted-cell font-semibold">{idx + 1}</td>
                       <td>
-                        <div className="opp-thumb-box" style={{ background: item.thumbnailGradient }}>
+                        <div className="opp-thumb-box" style={{ background: (item.thumbnailGradient || 'linear-gradient(135deg, #64748b, #334155)') }}>
                           <span className="opp-dur">12:45</span>
                         </div>
                       </td>
-                      <td><span className="opp-title-text">{item.title}</span></td>
+                      <td><span className="opp-title-text">{(item.title ?? item.name ?? 'Chưa có tiêu đề')}</span></td>
                       <td>
                         <span className="opp-platform-tag">
-                          {item.platform === 'YouTube' && <YoutubeIcon size={14} className="yt-red" />}
+                          {(item.platform ?? 'YouTube') === 'YouTube' && <YoutubeIcon size={14} className="yt-red" />}
                           {item.platform === 'TikTok' && <span className="tt-icon">🎵</span>}
                           {item.platform === 'Facebook' && <span className="fb-icon">🔵</span>}
                         </span>
                       </td>
                       <td>
                         <div className="opp-tags-stack">
-                          {item.keywords.map((kw, i) => (
+                          {(Array.isArray(item.keywords) ? item.keywords : []).map((kw: string, i: number) => (
                             <span key={i} className="kw-mini-tag">{kw}</span>
                           ))}
                         </div>
                       </td>
                       <td>
-                        <span className={`badge-level ${item.potentialLevel.toLowerCase()}`}>
-                          {item.potentialLevel}
+                        <span className={`badge-level ${String(item.potentialLevel ?? item.level ?? 'Chưa xác định').toLowerCase()}`}>
+                          {item.potentialLevel ?? item.level ?? 'Chưa xác định'}
                         </span>
                       </td>
-                      <td className="font-bold">{item.expectedViews}</td>
+                      <td className="font-bold">{item.expectedViews ?? 'Chưa có dữ liệu'}</td>
                       <td>
                         <div className="table-actions-cell">
                           <button type="button" className="action-icon-btn view" title="Xem chi tiết"><Eye size={14} /></button>
@@ -211,7 +246,7 @@ export const WF07Page: React.FC = () => {
           </div>
 
           <div className="table-pagination-footer">
-            <span className="pagination-info">Hiển thị 1 - 5 của 125 cơ hội</span>
+            <span className="pagination-info">Hiển thị {filteredOpportunities.length} / {opportunities.length} cơ hội</span>
             <div className="pagination-nav">
               <button className="page-nav-btn">&lt;</button>
               <button className="page-num-btn active">1</button>
@@ -237,7 +272,7 @@ export const WF07Page: React.FC = () => {
               <button
                 type="button"
                 className="detail-arrow-btn"
-                onClick={() => setSelectedOppId((prev) => Math.max(1, prev - 1))}
+                onClick={() => { const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id); if (i > 0) setSelectedOppId(filteredOpportunities[i - 1].id); }}
                 title="Cơ hội trước"
               >
                 &lt;
@@ -245,7 +280,7 @@ export const WF07Page: React.FC = () => {
               <button
                 type="button"
                 className="detail-arrow-btn"
-                onClick={() => setSelectedOppId((prev) => Math.min(opportunities.length, prev + 1))}
+                onClick={() => { const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id); if (i >= 0 && i < filteredOpportunities.length - 1) setSelectedOppId(filteredOpportunities[i + 1].id); }}
                 title="Cơ hội tiếp theo"
               >
                 &gt;
@@ -253,8 +288,9 @@ export const WF07Page: React.FC = () => {
             </div>
           </div>
 
+          {selectedOpp ? <>
           {/* Hero Banner */}
-          <div className="opp-hero-banner" style={{ background: selectedOpp.thumbnailGradient }}>
+          <div className="opp-hero-banner" style={{ background: selectedOpp.thumbnailGradient || "linear-gradient(135deg, #64748b, #334155)" }}>
             <div className="banner-badge-top">
               <span className="badge-tag-banner">TOP 10 ĐẢO ĐẸP NHẤT VIỆT NAM</span>
             </div>
@@ -345,6 +381,9 @@ export const WF07Page: React.FC = () => {
               ))}
             </div>
           </div>
+          </> : <div style={{ padding: 24, textAlign: 'center' }}>
+            {loading ? 'Đang tải chi tiết...' : 'Chưa có dữ liệu chi tiết cho cơ hội nội dung.'}
+          </div>}
         </div>
       </div>
 
@@ -364,7 +403,8 @@ export const WF07Page: React.FC = () => {
           </div>
 
           <div className="chart-svg-wrap">
-            <svg viewBox="0 0 450 170" className="trend-svg-chart">
+            <p style={{ padding: 24, textAlign: "center" }}>Chưa có dữ liệu lịch sử tìm kiếm từ API.</p>
+            <svg style={{ display: "none" }} viewBox="0 0 450 170" className="trend-svg-chart">
               <line x1="30" y1="20" x2="430" y2="20" stroke="#F1F5F9" />
               <text x="22" y="24" fill="#94A3B8" fontSize="9" textAnchor="end">80K</text>
               <line x1="30" y1="60" x2="430" y2="60" stroke="#F1F5F9" />
@@ -442,7 +482,7 @@ export const WF07Page: React.FC = () => {
                 <circle cx="80" cy="80" r="56" fill="none" stroke="#F59E0B" strokeWidth="24" strokeDasharray="66 377" strokeDashoffset="-309" />
               </svg>
               <div className="donut-center-label">
-                <span className="donut-center-number">125</span>
+                <span className="donut-center-number">{opportunities.length}</span>
                 <span className="donut-center-sub">Cơ hội</span>
               </div>
             </div>
