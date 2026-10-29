@@ -4,6 +4,4 @@ tunnels:
   frontend:
     proto: http
     addr: 5173
-  n8n:
-    proto: http
-    addr: 5678
+ 
