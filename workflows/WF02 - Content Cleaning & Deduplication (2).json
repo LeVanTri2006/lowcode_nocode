@@ -11,7 +11,7 @@
         320,
         112
       ],
-      "id": "294f6b4c-bdc4-454d-84fb-e28860485685",
+      "id": "8bea5ce3-900d-4ca8-962b-86a2de89a0c7",
       "name": "04 - Normalize Content"
     },
     {
@@ -24,7 +24,7 @@
         544,
         112
       ],
-      "id": "aae97bb4-cbaf-4dd1-ae5c-2c48433f2730",
+      "id": "f7af4020-7e1f-4fe3-8339-a58a29852412",
       "name": "05 - Clean Text"
     },
     {
@@ -37,7 +37,7 @@
         768,
         112
       ],
-      "id": "56581918-2279-4ecd-88ac-1ea4c56d3c90",
+      "id": "0b7e6e7b-8a52-4f5e-8f64-a030c17a2d3b",
       "name": "06 - Validate Content"
     },
     {
@@ -71,7 +71,7 @@
         1040,
         112
       ],
-      "id": "68f9b4eb-4de9-4adf-a2e5-9792f0fbf5b1",
+      "id": "2bd4c46e-8695-44f8-b42b-6543596733da",
       "name": "07 - IF Valid"
     },
     {
@@ -98,7 +98,7 @@
         1312,
         80
       ],
-      "id": "1930dd3b-1ae5-48b7-a5e1-d80f9c00fb92",
+      "id": "32990509-4157-48e0-a271-14bf27462017",
       "name": "08 - Duplicate Check"
     },
     {
@@ -111,7 +111,7 @@
         1536,
         80
       ],
-      "id": "8ac1a76b-43a6-4282-9737-bf8ae95f5ee4",
+      "id": "3bf170bd-8cf4-4623-bd54-df6813873882",
       "name": "09 - Merge Content + Duplicate Status"
     },
     {
@@ -145,7 +145,7 @@
         1760,
         80
       ],
-      "id": "014cb46b-f238-4927-93b3-2c60f49e7fcb",
+      "id": "f21b18f3-f4ca-4abe-b6e3-df7017057c7a",
       "name": "10 - IF New Content"
     },
     {
@@ -158,7 +158,7 @@
         1312,
         272
       ],
-      "id": "81419da9-a62b-476e-8f4f-0429340c0fc8",
+      "id": "c965aa39-a7e9-451b-a339-8e98dc0d896e",
       "name": "07F - Ignore Invalid Content"
     },
     {
@@ -171,7 +171,7 @@
         1984,
         208
       ],
-      "id": "08f91b22-10d6-4270-980e-5cffef80cf56",
+      "id": "9e65a825-bf39-4639-a786-26b6b016f868",
       "name": "10F - Ignore Duplicate Content"
     },
     {
@@ -219,7 +219,7 @@
         1984,
         0
       ],
-      "id": "477a1750-d5ad-4f76-9fa0-058274627d7e",
+      "id": "70522356-1d4a-4c89-9215-8249bfcec26f",
       "name": "10T - Save New Content"
     },
     {
@@ -229,10 +229,10 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.3,
       "position": [
-        0,
+        96,
         112
       ],
-      "id": "caf808fd-d40f-4e43-b60f-37b3331b28bf",
+      "id": "5d0c5c3a-4028-41d9-9d84-7562b7843a99",
       "name": "When Executed by Another Workflow"
     },
     {
@@ -245,7 +245,7 @@
         2208,
         0
       ],
-      "id": "b6fac404-d38e-4e59-af3c-82d03a92f454",
+      "id": "b86f708a-01c8-410c-b6a0-aa7badca31d0",
       "name": "11T - Normalize Saved Content"
     },
     {
@@ -258,7 +258,7 @@
         2400,
         384
       ],
-      "id": "2c91a856-9624-457c-9818-9dfc848c6d7b",
+      "id": "161c30bd-44c4-4751-8ada-166d8fac5089",
       "name": "12 - Merge Processing Results."
     }
   ],
@@ -414,13 +414,14 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "e497e639-7384-4939-9685-21702ebb8dce",
+  "versionId": "8499a4a3-6be0-4d93-8b37-0dc7767e957f",
   "meta": {
-    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "a0UAXCUxvNxXO74O",
+  "id": "569BlH7Tg1IJhazj",
   "tags": []
 }

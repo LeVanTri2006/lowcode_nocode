@@ -7,9 +7,9 @@
       "typeVersion": 1,
       "position": [
         0,
-        96
+        176
       ],
-      "id": "49a2f828-128e-40af-804e-66145dc404fd",
+      "id": "36b3197a-03af-4282-b5a1-d43367919833",
       "name": "01 - Start WF04"
     },
     {
@@ -21,9 +21,9 @@
       "typeVersion": 4.5,
       "position": [
         224,
-        96
+        176
       ],
-      "id": "6de861d1-61be-4399-bced-63ca21c2301e",
+      "id": "31dd2c4d-fd26-4044-b603-fcea16c5aabe",
       "name": "02 - Get Performance Data"
     },
     {
@@ -35,9 +35,9 @@
       "typeVersion": 1.1,
       "position": [
         448,
-        96
+        176
       ],
-      "id": "2400b94f-ca42-48a2-838a-22c1b74bf1f2",
+      "id": "fed4736e-1bd0-4522-a032-d14e9044d921",
       "name": "03 - Split Performance Data"
     },
     {
@@ -48,9 +48,9 @@
       "typeVersion": 2,
       "position": [
         672,
-        96
+        176
       ],
-      "id": "d7bf07b7-0f3b-4447-9532-61eca0dfe307",
+      "id": "c3008afe-1520-4f48-bb98-7d0cac6ecaaa",
       "name": "04 - Calculate Video Performance"
     },
     {
@@ -61,9 +61,9 @@
       "typeVersion": 2,
       "position": [
         896,
-        96
+        176
       ],
-      "id": "268198e2-8267-4e67-a72e-f352331acdc8",
+      "id": "cccfb81b-dbf2-4f74-ad27-dc5c7d32f639",
       "name": "05 - Aggregate Competitor Performance"
     },
     {
@@ -74,9 +74,9 @@
       "typeVersion": 2,
       "position": [
         1120,
-        96
+        176
       ],
-      "id": "8d714834-ddb1-430a-a712-96ca00445037",
+      "id": "72849a7b-d691-4438-aee2-4c1ab1811664",
       "name": "06 - Calculate Competitor Ranking"
     },
     {
@@ -87,9 +87,9 @@
       "typeVersion": 2,
       "position": [
         1344,
-        96
+        176
       ],
-      "id": "bef09f95-7e9b-4ce1-a079-1671641464ac",
+      "id": "80430871-ce1b-49f3-8d32-2582c562a4bd",
       "name": "07 - Validate Performance"
     },
     {
@@ -121,9 +121,9 @@
       "typeVersion": 2.3,
       "position": [
         1568,
-        96
+        176
       ],
-      "id": "3ebcad07-3b00-4994-a457-97690821a052",
+      "id": "599a43c6-52ed-4850-a7ce-411d9fe394d2",
       "name": "08 - IF Performance Valid"
     },
     {
@@ -134,9 +134,9 @@
       "typeVersion": 2,
       "position": [
         1792,
-        192
+        272
       ],
-      "id": "2c8b9ba3-2d81-44c2-a0c4-8f9a42bd70c1",
+      "id": "277b50f5-4b2d-4b2a-a6a1-5b2814dd303c",
       "name": "09 - Handle Performance Error"
     },
     {
@@ -214,9 +214,9 @@
       "typeVersion": 4.5,
       "position": [
         1808,
-        -16
+        64
       ],
-      "id": "f8710c96-1ceb-45bc-8ee4-51a51a3b78b8",
+      "id": "d2b66fdf-a53a-4a24-b4ca-690614ad51c9",
       "name": "10 - Save Performance Analysis"
     },
     {
@@ -230,14 +230,14 @@
       "typeVersion": 2.2,
       "position": [
         0,
-        288
+        368
       ],
-      "id": "4fcfea98-b231-4680-917c-482508ec76bd",
+      "id": "9904f453-99d5-4c84-b7d9-68420da5cb80",
       "name": "Webhook",
       "webhookId": "1821215f-b510-453b-886d-f61f670334ba",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "e7OAXE26yLvCPKP1",
+          "id": "pkIWKy7Na413vKrm",
           "name": "Header Auth account 3"
         }
       }
@@ -250,10 +250,37 @@
       "typeVersion": 1.3,
       "position": [
         0,
-        -80
+        0
       ],
-      "id": "4cebd75a-6703-407e-b908-a9628f2a9756",
+      "id": "c7641605-aa75-46ad-b872-f55ec0ba2adc",
       "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "3NFjwKuamgs9Hppy",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/3NFjwKuamgs9Hppy"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        2064,
+        64
+      ],
+      "id": "7c0a3dba-e42e-4205-820a-93653c37ea58",
+      "name": "Call 'WF06 - Competitive Trend Detection'"
     }
   ],
   "pinData": {},
@@ -374,19 +401,31 @@
           }
         ]
       ]
+    },
+    "10 - Save Performance Analysis": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF06 - Competitive Trend Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "8b2305c9-0c97-41aa-8dd7-3ec6bf618d36",
+  "versionId": "2f663525-5c51-4140-89a3-d466526f3e3e",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "ELHoEZLudMRJqu0W",
+  "id": "7rVa88JnYSdBj3me",
   "tags": []
 }

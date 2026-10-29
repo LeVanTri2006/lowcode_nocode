@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2128,
-        944
+        -720,
+        48
       ],
-      "id": "858d4b9b-fa91-4581-aeb4-f23d9cce794b",
+      "id": "a467d6a9-1d8f-4f3a-9eba-d62ff9193c9a",
       "name": "01 - Manual Trigger"
     },
     {
@@ -22,10 +22,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -2128,
-        1136
+        -720,
+        240
       ],
-      "id": "bd6d1b0f-2c9b-4a79-b89d-446b0d131be4",
+      "id": "9f39d7f9-4927-40b4-8b88-b04bc9648dec",
       "name": "02 - Webhook Trigger",
       "webhookId": "wf07-detect-hook"
     },
@@ -41,10 +41,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1920,
-        912
+        -512,
+        16
       ],
-      "id": "fba4e69e-880f-49db-9129-c6546dfb38b0",
+      "id": "32f36b9c-6c87-45b3-b56b-ffd38a305470",
       "name": "03 - Get Active Trends"
     },
     {
@@ -59,10 +59,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1920,
-        1152
+        -512,
+        256
       ],
-      "id": "636c35f1-ae2f-4ac3-bbf9-98710ec1494d",
+      "id": "2240bd6a-bcbd-4ff9-9726-ce54deedd8c4",
       "name": "04 - Get Competitor Performance"
     },
     {
@@ -82,10 +82,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1712,
-        912
+        -304,
+        16
       ],
-      "id": "880a3278-f2d5-4395-b323-14df0b722b3c",
+      "id": "bce80cac-cc77-42e7-8604-f79e4ef015c9",
       "name": "03A - Label Trends Response"
     },
     {
@@ -97,10 +97,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        -1504,
-        1024
+        -96,
+        128
       ],
-      "id": "51367655-c15c-494d-93dc-c40e04b77b2b",
+      "id": "20510229-29ed-4e38-a546-69df027ad545",
       "name": "05 - Merge Trends & Performance"
     },
     {
@@ -120,10 +120,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1712,
-        1152
+        -304,
+        256
       ],
-      "id": "1c86e364-b59a-40e6-9de5-9c50a03409fb",
+      "id": "26c67eaf-9959-4f75-9e92-d071406a2a33",
       "name": "04A - Label Performance Response"
     },
     {
@@ -155,10 +155,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1296,
-        1024
+        112,
+        128
       ],
-      "id": "0194eec9-a481-4700-9a8e-e2435a37ed53",
+      "id": "f862b73d-4f3e-4e28-b3ce-11952c0a6585",
       "name": "06 - Normalize Input Data"
     },
     {
@@ -189,55 +189,57 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1088,
-        1024
+        320,
+        128
       ],
-      "id": "2b4e22cb-0e5c-41e2-bed4-e00f7159f331",
+      "id": "03c202a3-dfb5-4f99-97bc-dac1fa0f009f",
       "name": "07 - Check Input Data"
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst trends = Array.isArray(d.trends) ? d.trends : [];\nconst performance = Array.isArray(d.performance) ? d.performance : [];\nconst trendSummary = trends.map(t => ({\n  topic: String(t.topic ?? t.name ?? t.title ?? '').trim(),\n  growth_rate: Number(t.growth_rate ?? t.growthRate ?? 0),\n  category: String(t.category ?? '').trim()\n}));\nconst performanceSummary = performance.map(p => ({\n  competitor: String(p.competitor_name ?? p.channel_name ?? p.name ?? '').trim(),\n  content_title: String(p.title ?? p.content_title ?? '').trim(),\n  views: Number(p.views ?? p.view_count ?? 0),\n  engagement_rate: Number(p.engagement_rate ?? p.engagementRate ?? 0),\n  category: String(p.category ?? '').trim()\n}));\nreturn [{json:{trends:trendSummary, performance:performanceSummary, input_checked_at:d.input_checked_at}}];"
+        "jsCode": "const d = $input.first().json;\nconst trends = Array.isArray(d.trends) ? d.trends : [];\nconst performance = Array.isArray(d.performance) ? d.performance : [];\nconst trendSummary = trends.map(t => ({\n  topic: String(t.topic ?? t.name ?? t.title ?? '').trim(),\n  growth_rate: Number(t.growth_rate ?? t.growthRate ?? 0),\n  category: String(t.category ?? '').trim(),\n  views: Number(t.views ?? 0),   // Bổ sung views từ WF06\n  likes: Number(t.likes ?? 0)\n}));\nconst performanceSummary = performance.map(p => ({\n  competitor: String(p.competitor_name ?? p.channel_name ?? p.name ?? '').trim(),\n  content_title: String(p.title ?? p.content_title ?? '').trim(),\n  views: Number(p.views ?? p.view_count ?? 0),\n  engagement_rate: Number(p.engagement_rate ?? p.engagementRate ?? 0),\n  category: String(p.category ?? '').trim()\n}));\nreturn [{json:{trends:trendSummary, performance:performanceSummary, input_checked_at:d.input_checked_at}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -880,
-        912
+        528,
+        16
       ],
-      "id": "9ff4950d-6206-4e4d-93be-0e54aa1ae608",
+      "id": "f149057b-290e-4f04-92ed-be1956ef4505",
       "name": "08 - Prepare AI Analysis Context"
     },
     {
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "llama3.2:1b",
-          "mode": "list"
+          "value": "qwen2.5:3b",
+          "mode": "list",
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
             {
-              "content": "={{ 'Bạn là chuyên gia phân tích cạnh tranh. Dựa CHỈ trên dữ liệu JSON bên dưới, hãy phát hiện tối đa 3 cơ hội cạnh tranh. Không bịa số liệu. Nếu dữ liệu không đủ, hãy nêu rõ hạn chế trong description. Trả DUY NHẤT JSON hợp lệ theo cấu trúc {\"opportunities\":[{\"title\":\"...\",\"description\":\"...\",\"potential_score\":0,\"recommended_action\":\"...\"}]}. potential_score phải là số nguyên từ 0 đến 100.\\nDỮ LIỆU:\\n' + JSON.stringify($json) }}"
+              "content": "={{ 'Bạn là chuyên gia phân tích cạnh tranh thị trường. Dựa CHỈ trên tập dữ liệu JSON bên dưới (gồm chủ đề xu hướng, tốc độ tăng trưởng, thể loại, views, likes và hiệu suất đối thủ), hãy phát hiện tối đa 3 cơ hội cạnh tranh giá trị nhất.\\n\\nQUY TẮC:\\n1. Không bịa số liệu hay tự suy diễn sự kiện ngoài dữ liệu.\\n2. Ưu tiên đánh giá cao các xu hướng và chủ đề có tổng lượng views/likes hoặc tốc độ tăng trưởng (growth_rate) vượt trội.\\n3. Nếu dữ liệu đầu vào không đủ hoặc hạn chế, bắt buộc phải nêu rõ hạn chế đó bên trong trường description.\\n4. Trả về DUY NHẤT một đối tượng JSON hợp lệ, tuyệt đối không dùng Markdown, không thêm lời giải thích nào ngoài JSON.\\n\\nCẤU TRÚC JSON BẮT BUỘC:\\n{\\n  \"opportunities\": [\\n    {\\n      \"title\": \"Tiêu đề cơ hội ngắn gọn, súc tích\",\\n      \"description\": \"Phân tích chi tiết dựa trên dữ liệu views, likes và xu hướng (nêu rõ hạn chế nếu có)\",\\n      \"potential_score\": 85,\\n      \"recommended_action\": \"Hành động đề xuất cụ thể, khả thi\"\\n    }\\n  ]\\n}\\n\\nLƯU Ý THÊM:\\n- potential_score phải là số nguyên từ 0 đến 100 thể hiện mức độ tiềm năng.\\n- Đảm bảo cú pháp JSON chuẩn xác, đóng mở ngoặc đầy đủ.\\n\\nDỮ LIỆU ĐẦU VÀO:\\n' + JSON.stringify($json) }}"
             }
           ]
         },
         "options": {
           "temperature": 0.2,
-          "num_predict": 1024
+          "num_predict": 1024,
+          "format": "json"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        -672,
-        912
+        736,
+        16
       ],
-      "id": "27c2f681-0457-46c2-af0c-73cdb5310d9c",
+      "id": "71869605-4056-40f6-b0b2-d5c29e5bc9f8",
       "name": "09 - Ollama Opportunity Analysis",
       "credentials": {
         "ollamaApi": {
-          "id": "XiC4iV2mHLf0nYr9",
+          "id": "l83Vzrt95BoSfMCw",
           "name": "Ollama account"
         }
       }
@@ -249,10 +251,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -336,
-        912
+        1072,
+        16
       ],
-      "id": "7e9a5185-2628-4a24-a972-33909767fbab",
+      "id": "8bdc28ad-39cd-4e3e-8d6c-8b3dbc47c561",
       "name": "10 - Parse & Validate AI JSON"
     },
     {
@@ -283,10 +285,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -128,
-        912
+        1280,
+        16
       ],
-      "id": "91d23a9c-4de6-409f-a121-04d44ca581a9",
+      "id": "65aafacf-bc73-44b2-9e37-827de82ca274",
       "name": "11 - IF Opportunity Valid"
     },
     {
@@ -295,16 +297,16 @@
         "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { title: $json.title, description: $json.description, potential_score: $json.potential_score, recommended_action: $json.recommended_action } }}",
+        "jsonBody": "={{\n  {\n    title: $json.title,\n    score: $json.potential_score,\n    priority: $json.potential_score >= 80 ? 'high' : ($json.potential_score >= 60 ? 'medium' : 'low'),\n    reason: $json.description,\n    evidence: {\n      description: $json.description,\n      recommended_action: $json.recommended_action,\n      potential_score: $json.potential_score,\n      rank: $json.rank\n    }\n  }\n}}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        64,
-        800
+        1472,
+        -96
       ],
-      "id": "7fa50b0f-6c44-4f3a-9beb-fb4a2657704e",
+      "id": "bf806d81-710d-4b84-a41b-3ffd247f6307",
       "name": "12 - Save Opportunity to Backend"
     },
     {
@@ -318,10 +320,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        272,
-        800
+        1680,
+        -96
       ],
-      "id": "294ab709-fd29-4761-8c2a-234d8ba4b004",
+      "id": "8d7d73d7-57c5-4788-b65d-bbf6be24ab6a",
       "name": "13 - Respond Success"
     },
     {
@@ -335,10 +337,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        -880,
-        1152
+        528,
+        256
       ],
-      "id": "0d23c30a-b904-4bcd-882d-2294cf7a35c1",
+      "id": "f74b2a8b-7908-4be9-81f1-5ad8fefbb7ab",
       "name": "14 - Respond Input Error"
     },
     {
@@ -352,11 +354,51 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        64,
-        1040
+        1472,
+        144
       ],
-      "id": "014ecfd7-a415-40a7-a13d-c9b2b6c43e3e",
+      "id": "fe5be269-c580-48ce-bfea-2f4497cd39b9",
       "name": "15 - Respond Validation Error"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -752,
+        448
+      ],
+      "id": "d64c6814-0932-4bde-9ab4-bce96b7ff5e1",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jvm4W7vrBleiAems",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/jvm4W7vrBleiAems"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1824,
+        96
+      ],
+      "id": "31ccfb55-ce57-43a4-ad99-37a42451e642",
+      "name": "Call 'WF08 - Competitive Risk Detection'"
     }
   ],
   "pinData": {},
@@ -538,19 +580,68 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Active Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "04 - Get Competitor Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 - Respond Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF08 - Competitive Risk Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - Respond Success": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF08 - Competitive Risk Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - Respond Input Error": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF08 - Competitive Risk Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "bbcedd51-5e2a-4c85-be1e-6d23529910e6",
+  "versionId": "b2669475-78a6-4072-accf-9c88defe9257",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "qB0wNN2G388PS0vU",
+  "id": "jjJ0lOb2k0yhNcVx",
   "tags": []
 }

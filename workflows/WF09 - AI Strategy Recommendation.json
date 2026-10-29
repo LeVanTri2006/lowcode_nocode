@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -3936,
-        544
+        1264,
+        -128
       ],
-      "id": "f6f12ebc-db45-4487-87c1-eb3846902b47",
+      "id": "0873eaff-951b-463e-bc77-6cdd8cfadaac",
       "name": "01 - Start WF09"
     },
     {
@@ -22,10 +22,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -3936,
-        736
+        1264,
+        80
       ],
-      "id": "2e1738c9-50ca-46b5-abc2-b04685d26824",
+      "id": "965f8b21-c48d-4793-a319-6e5c6430b60c",
       "name": "02 - Webhook Trigger WF09",
       "webhookId": "wf09-strategy-hook"
     },
@@ -39,10 +39,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -3696,
-        640
+        1504,
+        -32
       ],
-      "id": "e7995b01-d25a-4f1e-8cd8-53cceaed5a86",
+      "id": "4023ec28-72dd-47eb-a90d-594ba091ee1d",
       "name": "03 - Get Opportunities"
     },
     {
@@ -55,10 +55,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -3472,
-        640
+        1728,
+        -32
       ],
-      "id": "dca9a95e-0037-4225-a14d-b8610d7014d7",
+      "id": "c3a5315f-959f-41be-bd7c-6f1843283db5",
       "name": "04 - Get Risks"
     },
     {
@@ -71,23 +71,23 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -3264,
-        640
+        1936,
+        -32
       ],
-      "id": "412ef562-517e-415f-8f39-92a21a78045a",
+      "id": "93dc6bba-9c1e-47dc-9854-996257dc4cf4",
       "name": "05 - Get Market Trends"
     },
     {
       "parameters": {
-        "jsCode": "function extractList(response, keys) {\n  let value = response?.data ?? response?.body ?? response;\n  if (value && !Array.isArray(value) && typeof value === 'object') {\n    for (const key of keys) {\n      if (Array.isArray(value[key])) return value[key];\n    }\n    if (value.data && typeof value.data === 'object') {\n      for (const key of keys) {\n        if (Array.isArray(value.data[key])) return value.data[key];\n      }\n    }\n    return [];\n  }\n  return Array.isArray(value) ? value : [];\n}\n\nconst opportunitiesResponse = $('03 - Get Opportunities').first().json;\nconst risksResponse = $('04 - Get Risks').first().json;\nconst trendsResponse = $('05 - Get Market Trends').first().json;\n\nconst opportunities = extractList(opportunitiesResponse, ['opportunities', 'items', 'results']);\nconst risks = extractList(risksResponse, ['risks', 'items', 'results']);\nconst trends = extractList(trendsResponse, ['trends', 'market_trends', 'items', 'results']);\n\nconst hasInputData = opportunities.length > 0 || risks.length > 0 || trends.length > 0;\nconst analyzedAt = new Date().toISOString();\n\nconst prompt = `Bạn là chuyên gia phân tích chiến lược cạnh tranh.\nHãy xây dựng một chiến lược cạnh tranh tổng thể bằng tiếng Việt dựa trên dữ liệu thực tế bên dưới.\n\nQUY TẮC:\n- Chỉ sử dụng bằng chứng có trong dữ liệu đầu vào; không tự bịa số liệu, doanh nghiệp hoặc sự kiện.\n- Kết hợp cơ hội, rủi ro và xu hướng thành một chiến lược thống nhất.\n- Nếu dữ liệu của một nhóm bị thiếu, hãy nêu rõ hạn chế đó trong mục tiêu hoặc kết quả kỳ vọng.\n- Các bước hành động phải cụ thể, có thứ tự ưu tiên và khả thi.\n- Chỉ trả về một JSON hợp lệ, không dùng Markdown hoặc khối code.\n- action_steps phải là mảng gồm ít nhất 3 bước.\n- expected_outcome phải mô tả kết quả kỳ vọng, không khẳng định kết quả chắc chắn xảy ra.\n\nCẤU TRÚC JSON BẮT BUỘC:\n{\n  \"strategy_title\": \"Tên chiến lược\",\n  \"objective\": \"Mục tiêu chiến lược\",\n  \"action_steps\": [\"Bước 1\", \"Bước 2\", \"Bước 3\"],\n  \"expected_outcome\": \"Kết quả kỳ vọng\",\n  \"supporting_evidence\": [\"Bằng chứng từ dữ liệu\"],\n  \"limitations\": [\"Hạn chế của dữ liệu nếu có\"]\n}\n\nDỮ LIỆU CƠ HỘI (${opportunities.length} bản ghi):\n${JSON.stringify(opportunities.slice(0, 30))}\n\nDỮ LIỆU RỦI RO (${risks.length} bản ghi):\n${JSON.stringify(risks.slice(0, 30))}\n\nDỮ LIỆU XU HƯỚNG (${trends.length} bản ghi):\n${JSON.stringify(trends.slice(0, 30))}\n\nThời điểm phân tích: ${analyzedAt}`;\n\nreturn [{\n  json: {\n    analyzed_at: analyzedAt,\n    opportunities,\n    risks,\n    trends,\n    opportunity_count: opportunities.length,\n    risk_count: risks.length,\n    trend_count: trends.length,\n    has_input_data: hasInputData,\n    prompt\n  }\n}];"
+        "jsCode": "function extractList(response, keys) {\n  let value = response?.data ?? response?.body ?? response;\n  if (value && !Array.isArray(value) && typeof value === 'object') {\n    for (const key of keys) {\n      if (Array.isArray(value[key])) return value[key];\n    }\n    if (value.data && typeof value.data === 'object') {\n      for (const key of keys) {\n        if (Array.isArray(value.data[key])) return value.data[key];\n      }\n    }\n    return [];\n  }\n  return Array.isArray(value) ? value : [];\n}\n\nconst opportunitiesResponse = $('03 - Get Opportunities').first().json;\nconst risksResponse = $('04 - Get Risks').first().json;\nconst trendsResponse = $('05 - Get Market Trends').first().json;\n\n// Trích xuất danh sách và chuẩn hóa/cắt gọn nội dung để chống tràn token\nconst opportunities = extractList(opportunitiesResponse, ['opportunities', 'items', 'results']).slice(0, 20).map(o => ({\n  title: o.title ?? '',\n  score: o.score ?? o.potential_score ?? 0,\n  priority: o.priority ?? '',\n  reason: String(o.reason ?? o.description ?? '').slice(0, 200)\n}));\n\nconst risks = extractList(risksResponse, ['risks', 'items', 'results']).slice(0, 20).map(r => ({\n  risk_title: r.risk_title ?? '',\n  severity: r.severity ?? '',\n  impact_analysis: String(r.impact_analysis ?? '').slice(0, 200),\n  mitigation_strategy: String(r.mitigation_strategy ?? '').slice(0, 200)\n}));\n\nconst trends = extractList(trendsResponse, ['trends', 'market_trends', 'items', 'results']).slice(0, 20).map(t => ({\n  topic: t.topic ?? t.name ?? t.title ?? '',\n  growth_rate: t.growth_rate ?? t.growthRate ?? 0,\n  views: t.views ?? 0,\n  likes: t.likes ?? 0,\n  category: t.category ?? ''\n}));\n\nconst hasInputData = opportunities.length > 0 || risks.length > 0 || trends.length > 0;\nconst analyzedAt = new Date().toISOString();\n\nconst prompt = `Bạn là chuyên gia phân tích chiến lược cạnh tranh.\nHãy xây dựng một chiến lược cạnh tranh tổng thể bằng tiếng Việt dựa trên dữ liệu thực tế đã được tổng hợp từ cơ hội, rủi ro và xu hướng bên dưới.\n\nQUY TẮC:\n- Chỉ sử dụng bằng chứng có trong dữ liệu đầu vào; không tự bịa số liệu, doanh nghiệp hoặc sự kiện.\n- Kết hợp cơ hội, rủi ro và xu hướng (đặc biệt chú ý các chỉ số views, likes, growth_rate và mức độ nghiêm trọng severity) thành một chiến lược thống nhất.\n- Nếu dữ liệu của một nhóm bị thiếu, hãy nêu rõ hạn chế đó trong mục tiêu hoặc kết quả kỳ vọng.\n- Các bước hành động phải cụ thể, có thứ tự ưu tiên và khả thi.\n- Chỉ trả về một JSON hợp lệ, không dùng Markdown hoặc khối code.\n- action_steps phải là mảng gồm ít nhất 3 bước.\n- expected_outcome phải mô tả kết quả kỳ vọng, không khẳng định kết quả chắc chắn xảy ra.\n\nCẤU TRÚC JSON BẮT BUỘC:\n{\n  \"strategy_title\": \"Tên chiến lược\",\n  \"objective\": \"Mục tiêu chiến lược\",\n  \"action_steps\": [\"Bước 1\", \"Bước 2\", \"Bước 3\"],\n  \"expected_outcome\": \"Kết quả kỳ vọng\",\n  \"supporting_evidence\": [\"Bằng chứng từ dữ liệu\"],\n  \"limitations\": [\"Hạn chế của dữ liệu nếu có\"]\n}\n\nDỮ LIỆU CƠ HỘI (${opportunities.length} bản ghi):\n${JSON.stringify(opportunities)}\n\nDỮ LIỆU RỦI RO (${risks.length} bản ghi):\n${JSON.stringify(risks)}\n\nDỮ LIỆU XU HƯỚNG (${trends.length} bản ghi):\n${JSON.stringify(trends)}\n\nThời điểm phân tích: ${analyzedAt}`;\n\nreturn [{\n  json: {\n    analyzed_at: analyzedAt,\n    opportunities,\n    risks,\n    trends,\n    opportunity_count: opportunities.length,\n    risk_count: risks.length,\n    trend_count: trends.length,\n    has_input_data: hasInputData,\n    prompt\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -3040,
-        640
+        2160,
+        -32
       ],
-      "id": "40c6c653-d2db-40b1-a125-e322f496e357",
+      "id": "3434af88-6d3a-41b6-a937-86b3801fab82",
       "name": "06 - Normalize Data and Prepare Prompt"
     },
     {
@@ -118,18 +118,19 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -2816,
-        640
+        2384,
+        -32
       ],
-      "id": "ecf16f81-b266-4bd3-9d18-2db327d7408c",
+      "id": "1f30b526-a0d4-402d-930e-d23e952f75d2",
       "name": "07 - IF Input Data Available"
     },
     {
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "llama3.2:1b",
-          "mode": "list"
+          "value": "qwen2.5:3b",
+          "mode": "list",
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
@@ -139,20 +140,22 @@
           ]
         },
         "options": {
-          "temperature": 0.2
+          "temperature": 0.2,
+          "num_predict": 1024,
+          "format": "json"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        -2592,
-        544
+        2608,
+        -128
       ],
-      "id": "67c8113c-a7da-4b8a-91db-f7e798d03100",
+      "id": "ec842230-d13a-4dc3-acf1-a2df1fa32f4d",
       "name": "08 - Ollama AI Strategy Generation",
       "credentials": {
         "ollamaApi": {
-          "id": "XiC4iV2mHLf0nYr9",
+          "id": "l83Vzrt95BoSfMCw",
           "name": "Ollama account"
         }
       }
@@ -164,23 +167,23 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2240,
-        544
+        2960,
+        -128
       ],
-      "id": "3f5b6e93-321a-402f-ae4d-40fcb168bc15",
+      "id": "673e924c-2d00-4030-bca9-abfef7b1ebf2",
       "name": "09 - Parse AI Strategy Response"
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const errors = [];\n  if (d.parse_ok !== true) errors.push(d.parse_error || 'Không phân tích được JSON từ AI.');\n  if (typeof d.strategy_title !== 'string' || !d.strategy_title.trim()) errors.push('Thiếu strategy_title.');\n  if (typeof d.objective !== 'string' || !d.objective.trim()) errors.push('Thiếu objective.');\n  if (!Array.isArray(d.action_steps) || d.action_steps.length < 3 || !d.action_steps.every(s => typeof s === 'string' && s.trim())) errors.push('action_steps phải là mảng có ít nhất 3 bước dạng văn bản.');\n  if (typeof d.expected_outcome !== 'string' || !d.expected_outcome.trim()) errors.push('Thiếu expected_outcome.');\n  if (d.supporting_evidence !== undefined && !Array.isArray(d.supporting_evidence)) errors.push('supporting_evidence phải là mảng.');\n  if (d.limitations !== undefined && !Array.isArray(d.limitations)) errors.push('limitations phải là mảng.');\n\n  return { json: { ...d, is_valid: errors.length === 0, validation_errors: errors } };\n});"
+        "jsCode": "const d = $input.first().json;\nconst errors = [];\n\nif (d.parse_ok !== true) {\n  errors.push(d.parse_error || 'Không phân tích được JSON từ AI.');\n}\n\nconst title = String(d.strategy_title ?? d.title ?? d.name ?? '').trim();\nconst objective = String(d.objective ?? d.description ?? d.reason ?? '').trim();\nconst outcome = String(d.expected_outcome ?? d.outcome ?? '').trim();\n\nconst steps = Array.isArray(d.action_steps)\n  ? d.action_steps.map(s => String(s ?? '').trim()).filter(Boolean)\n  : [];\n\nconst supportingEvidence = Array.isArray(d.supporting_evidence)\n  ? d.supporting_evidence.map(e => String(e ?? '').trim()).filter(Boolean)\n  : [];\n\nconst limitations = Array.isArray(d.limitations)\n  ? d.limitations.map(l => String(l ?? '').trim()).filter(Boolean)\n  : [];\n\nif (!title) errors.push('Thiếu strategy_title.');\nif (!objective) errors.push('Thiếu objective.');\nif (steps.length < 3) errors.push('action_steps phải có ít nhất 3 bước.');\nif (!outcome) errors.push('Thiếu expected_outcome.');\n\nconst ctx = $('06 - Normalize Data and Prepare Prompt').first().json;\n\nconst stepsText = steps.join('\\n');\nconst score = Number.isFinite(Number(d.score))\n  ? Number(d.score)\n  : 0;\n\nconst priority = ['low', 'medium', 'high', 'critical'].includes(\n  String(d.priority ?? '').trim().toLowerCase()\n)\n  ? String(d.priority).trim().toLowerCase()\n  : 'medium';\n\n// Confidence là điểm tin cậy quy ước dựa trên bằng chứng,\n// không phải xác suất thống kê.\nconst confidence = supportingEvidence.length >= 3\n  ? 0.7\n  : supportingEvidence.length > 0\n    ? 0.5\n    : 0.2;\n\nconst evidence = {\n  objective,\n  description: objective,\n  action_steps: steps,\n  expected_outcome: outcome,\n  supporting_evidence: supportingEvidence,\n  limitations,\n  source_counts: {\n    opportunities: ctx.opportunity_count ?? 0,\n    risks: ctx.risk_count ?? 0,\n    trends: ctx.trend_count ?? 0\n  }\n};\n\nreturn [{\n  json: {\n    is_valid: errors.length === 0,\n    validation_errors: errors,\n\n    title,\n    name: title,\n    strategy_title: title,\n\n    objective,\n    reason: objective,\n    description: objective,\n    summary: objective,\n\n    priority,\n    severity: priority,\n    level: priority,\n\n    status: 'active',\n    category: 'competitive',\n    type: 'strategy',\n\n    score,\n    strategy_score: score,\n    potential_score: score,\n    confidence,\n\n    action_steps: steps,\n    actions: steps,\n    steps,\n    recommendations: steps,\n    recommended_action: stepsText,\n    mitigation_strategy: stepsText,\n\n    expected_outcome: outcome,\n    outcome,\n    impact: outcome,\n    impact_analysis: outcome,\n\n    supporting_evidence: supportingEvidence,\n    limitations,\n    evidence,\n\n    analyzed_at: ctx.analyzed_at,\n    source_counts: evidence.source_counts\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2016,
-        544
+        3184,
+        -128
       ],
-      "id": "35b25c8d-1ea7-4ee5-8e07-cb15b82786c7",
+      "id": "89a7654b-7ad2-47de-8d71-56d56b50fa29",
       "name": "10 - Validate Strategy Output"
     },
     {
@@ -211,10 +214,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1792,
-        544
+        3408,
+        -128
       ],
-      "id": "24c7aab2-4b4d-4131-9c63-addfd057dbbb",
+      "id": "14857b3a-2ba9-4635-bcb8-7e9047c78e27",
       "name": "11 - IF Strategy Valid"
     },
     {
@@ -223,7 +226,7 @@
         "url": "https://enrich-tile-shale.ngrok-free.dev/api/strategies",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { strategy_title: $json.strategy_title, objective: $json.objective, action_steps: $json.action_steps, expected_outcome: $json.expected_outcome, supporting_evidence: $json.supporting_evidence ?? [], limitations: $json.limitations ?? [], analyzed_at: $('06 - Normalize Data and Prepare Prompt').first().json.analyzed_at, source_counts: { opportunities: $('06 - Normalize Data and Prepare Prompt').first().json.opportunity_count, risks: $('06 - Normalize Data and Prepare Prompt').first().json.risk_count, trends: $('06 - Normalize Data and Prepare Prompt').first().json.trend_count } } }}",
+        "jsonBody": "={{\n  {\n    title: $json.title,\n    objective: $json.objective,\n    description: $json.description,\n    priority: $json.priority,\n    confidence: $json.confidence,\n    evidence: $json.evidence\n  }\n}}",
         "options": {
           "timeout": 30000
         }
@@ -231,10 +234,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -1568,
-        432
+        3632,
+        -240
       ],
-      "id": "0e4716d7-7283-40d3-86d7-813fd010c8d7",
+      "id": "344fba5b-71e1-48d8-bb76-28cbc4ee03a1",
       "name": "12 - Save Strategy to Backend"
     },
     {
@@ -302,10 +305,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1344,
-        432
+        3856,
+        -240
       ],
-      "id": "11031013-8d73-43ec-87ec-df1c74172276",
+      "id": "a47a8d74-827b-403b-98cf-e7f7d86798a3",
       "name": "13 - Build Success Response"
     },
     {
@@ -337,10 +340,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1568,
-        640
+        3632,
+        -32
       ],
-      "id": "71fd4119-e2ba-4e7b-89b2-d806174b744e",
+      "id": "2e372a43-3727-41ae-8e7e-8cd48035035f",
       "name": "14 - Build Invalid Strategy Response"
     },
     {
@@ -372,11 +375,51 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -2592,
-        752
+        2608,
+        96
       ],
-      "id": "7d8d9518-d042-4e71-854d-1d0941f65abb",
+      "id": "74c88762-92d5-4612-af47-a88067fb83f0",
       "name": "15 - Build No Input Data Response"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        288
+      ],
+      "id": "2f90d4bf-0924-471d-b6fb-e460574893f8",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "cAtTBVmgqiIi0Mjm",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/cAtTBVmgqiIi0Mjm"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        4080,
+        -240
+      ],
+      "id": "003523c7-cb12-449d-90e8-174bdc937a25",
+      "name": "Call 'WF10 - Strategic Report Synthesis'"
     }
   ],
   "pinData": {},
@@ -526,19 +569,63 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - Build Success Response": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF10 - Strategic Report Synthesis'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - Build Invalid Strategy Response": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF10 - Strategic Report Synthesis'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 - Build No Input Data Response": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF10 - Strategic Report Synthesis'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "c7dfb0d0-d495-4b62-b56c-fa235a14708f",
+  "versionId": "b28192cb-8f7a-4159-accb-eebc05a57371",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "UmdyjyQkp5oseu0k",
+  "id": "RxTMXcGWYnDYlaAc",
   "tags": []
 }

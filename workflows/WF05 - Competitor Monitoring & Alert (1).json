@@ -9,7 +9,7 @@
         0,
         192
       ],
-      "id": "e6123597-27df-4e0c-b044-38de24ead28b",
+      "id": "d8942563-872f-4c1b-aa5a-3437899d5667",
       "name": "01 - Start WF05"
     },
     {
@@ -23,7 +23,7 @@
         224,
         192
       ],
-      "id": "230c959d-72a0-4a82-9eda-c137d32527e7",
+      "id": "a9ba8761-ca17-404e-9da7-6e494000a165",
       "name": "02 - Get Monitoring Data"
     },
     {
@@ -37,7 +37,7 @@
         448,
         192
       ],
-      "id": "ca70f20a-ce0c-4746-b0f4-b314cd71aa71",
+      "id": "55a85965-231f-4b4a-95ee-7e3cf1a3cd89",
       "name": "03 - Split Monitoring Data"
     },
     {
@@ -50,7 +50,7 @@
         672,
         192
       ],
-      "id": "76fcd279-a69b-46ac-9110-a785fa39e9ed",
+      "id": "6f2fddd4-cc54-4c91-8611-716a9ea87c80",
       "name": "04 - Calculate Monitoring Changes"
     },
     {
@@ -63,7 +63,7 @@
         896,
         192
       ],
-      "id": "cfef8065-04aa-4e81-a7b9-f6d11915be3a",
+      "id": "94f35016-ea28-4a35-8f25-a53b59fc5b47",
       "name": "05 - Detect Alert Conditions"
     },
     {
@@ -76,7 +76,7 @@
         1120,
         192
       ],
-      "id": "471af1ef-4da8-459a-9b83-5b6b88cfff9c",
+      "id": "a45f4c1d-d205-4b42-bb27-7c7c74675379",
       "name": "06 - Validate Monitoring Result"
     },
     {
@@ -110,7 +110,7 @@
         1344,
         192
       ],
-      "id": "3a87b67c-e0d0-46ae-930a-7d4e44e4da43",
+      "id": "ee87480e-3801-44f8-8057-eb25c068b2ff",
       "name": "07 - IF Monitoring Valid"
     },
     {
@@ -123,7 +123,7 @@
         1568,
         288
       ],
-      "id": "32daa8d9-edda-4923-9a75-04c1fc9262e7",
+      "id": "1a5497ae-b316-46b3-ac32-8298355c6a0a",
       "name": "08 - Handle Monitoring Error"
     },
     {
@@ -157,7 +157,7 @@
         1568,
         96
       ],
-      "id": "e3dc7a5c-f835-46ad-9caa-79e06853d532",
+      "id": "e22e2ebb-e6fa-4eae-b871-0d0a112475a7",
       "name": "09 - IF Alert Triggered"
     },
     {
@@ -221,7 +221,7 @@
         1792,
         0
       ],
-      "id": "45be51c7-bbe9-44c9-b602-b773327189a3",
+      "id": "422dc3da-8362-4565-b12d-fb0aaa616e66",
       "name": "10 - Save Monitoring Alert"
     },
     {
@@ -240,7 +240,7 @@
         0,
         384
       ],
-      "id": "db29d82d-59e4-498a-8919-779c7f04c795",
+      "id": "5f2f6430-38f4-4e95-aa5e-59a6559c832e",
       "name": "Schedule Trigger"
     }
   ],
@@ -356,13 +356,14 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "fac494ad-1442-432d-89bb-9aced0793030",
+  "versionId": "05fcfbe6-940c-4c5d-bf01-cb8a3a566880",
   "meta": {
-    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "f1hrjQtrgWZSQ4m7",
+  "id": "oRgykgD9PZOKHPR1",
   "tags": []
 }

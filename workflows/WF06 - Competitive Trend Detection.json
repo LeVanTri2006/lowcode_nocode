@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        -16
+        1232,
+        -336
       ],
-      "id": "412d69a5-196a-499f-8777-3bab940006e7",
+      "id": "3a8a394b-085a-4d2d-a0d5-b5562ca02b1a",
       "name": "01 - Start WF06"
     },
     {
@@ -22,10 +22,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        0,
-        176
+        1232,
+        -144
       ],
-      "id": "6a8484c1-cad9-4cf7-a7ad-5ab23e416c7d",
+      "id": "a55b4d90-3e77-4e53-8506-7f24b8415d20",
       "name": "02 - Webhook Trigger WF06",
       "webhookId": "743f9f6c-7370-43fa-aaae-af3876221419"
     },
@@ -37,24 +37,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        272,
-        80
+        1504,
+        -240
       ],
-      "id": "571606ed-189d-4264-adcf-6b4aa112d45c",
+      "id": "25e4ffa1-1588-4c22-8844-a7c44fa0906f",
       "name": "03 - Get Competitors"
     },
     {
       "parameters": {
-        "url": "https://enrich-tile-shale.ngrok-free.dev/api/social-contents",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        720,
-        80
+        1952,
+        -240
       ],
-      "id": "01db3f7b-dc88-405f-976a-00d2456fd554",
+      "id": "c32f6ff5-7dbf-44c4-a0b7-d8e49040dcf5",
       "name": "05 - Get Social Contents"
     },
     {
@@ -74,23 +74,23 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        496,
-        80
+        1728,
+        -240
       ],
-      "id": "3d089db0-ab22-4f1a-ae3c-c8a7921cedea",
+      "id": "4526540e-a5d9-4ac6-96e3-f2c1f075fa7a",
       "name": "04 - Prepare Competitor Data"
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst videos = response.data ?? [];\n\nreturn videos\n  .filter(video => video.title && video.contentId)\n  .map(video => ({\n    json: {\n      competitorId: video.competitorId,\n      platform: video.platform,\n      contentId: video.contentId,\n      title: video.title,\n      description: (video.description ?? '').slice(0, 500),\n      publishedAt: video.publishedAt,\n      url: video.url,\n    }\n  }));"
+        "jsCode": "const response = $input.first().json;\nconst analyses = response.data ?? [];\n\nreturn analyses\n  .filter(a => a.topic)\n  .map(a => ({\n    json: {\n      contentId: a.content_id,\n      topic: a.topic,\n      keywords: a.keywords,\n      category: a.category,\n      views: Number(a.views ?? a.viewCount ?? 0), // Bổ sung lượng xem\n      likes: Number(a.likes ?? a.likeCount ?? 0)  // Bổ sung lượng thích\n    }\n  }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        944,
-        80
+        2176,
+        -240
       ],
-      "id": "4f315f1b-bf9d-46b7-b3b3-90889a019722",
+      "id": "eea7208c-10f4-4723-bb73-3e548aeca255",
       "name": "06 - Prepare Video Data"
     },
     {
@@ -105,7 +105,7 @@
           "conditions": [
             {
               "id": "76434595-ee84-443d-9519-971ea7b458ee",
-              "leftValue": "={{ $json.title }}",
+              "leftValue": "={{ $json.topic }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -121,10 +121,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        1168,
-        80
+        2400,
+        -240
       ],
-      "id": "de00cb67-8fde-4fb1-93e5-dd84512ac59e",
+      "id": "d46072a2-1c3a-451a-86b9-33b0ca1f57e2",
       "name": "07 - Validate Video Data"
     },
     {
@@ -134,23 +134,23 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1376,
-        176
+        2608,
+        -144
       ],
-      "id": "5e480096-62c4-420f-ae0a-f2e99ec05ba2",
+      "id": "ee07312b-ef4b-4f44-ac86-3f70f9d093aa",
       "name": "08 - Handle Empty Video Data"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst allowedDirections = new Set(['rising', 'stable', 'falling']);\nconst seenNames = new Set();\nconst results = [];\n\nfor (const item of items) {\n  const raw = item.json.content;\n\n  if (typeof raw !== 'string' || !raw.trim()) {\n    continue;\n  }\n\n  let parsed;\n\n  try {\n    parsed = JSON.parse(raw);\n  } catch {\n    // Bỏ qua kết quả JSON lỗi để các items hợp lệ vẫn được xử lý.\n    continue;\n  }\n\n  if (!Array.isArray(parsed.trends)) {\n    continue;\n  }\n\n  for (const trend of parsed.trends) {\n    if (!trend || typeof trend !== 'object') continue;\n\n    const name = String(trend.name ?? '').trim();\n    const reason = String(trend.reason ?? '').trim();\n    const evidence = String(trend.evidence ?? '').trim();\n    const score = Number(trend.score);\n    const growthRate = Number(trend.growth_rate);\n    const direction = trend.direction;\n\n    if (!name || !reason || !evidence) continue;\n    if (!Number.isFinite(score) || score < 0 || score > 100) continue;\n    if (!Number.isFinite(growthRate)) continue;\n    if (!allowedDirections.has(direction)) continue;\n\n    const key = name.toLocaleLowerCase('vi').replace(/\\s+/g, ' ');\n    if (seenNames.has(key)) continue;\n\n    seenNames.add(key);\n\n    results.push({\n      json: {\n        name,\n        score,\n        growth_rate: 0,\n        direction: 'stable',\n        reason: reason + ' Chưa có dữ liệu so sánh theo thời gian để xác minh chiều hướng tăng trưởng.',\n        evidence\n      }\n    });\n\n    if (results.length >= 5) break;\n  }\n\n  if (results.length >= 5) break;\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst allowedDirections = new Set(['rising', 'stable', 'falling']);\nconst seenNames = new Set();\nconst results = [];\n\nfor (const item of items) {\n  const raw = item.json.content;\n\n  if (typeof raw !== 'string' || !raw.trim()) {\n    continue;\n  }\n\n  let parsed;\n\n  try {\n    parsed = JSON.parse(raw);\n  } catch {\n    // Bỏ qua kết quả JSON lỗi để các items hợp lệ vẫn được xử lý.\n    continue;\n  }\n\n  if (!Array.isArray(parsed.trends)) {\n    continue;\n  }\n\n  for (const trend of parsed.trends) {\n    if (!trend || typeof trend !== 'object') continue;\n\n    const name = String(trend.name ?? '').trim();\n    const reason = String(trend.reason ?? '').trim();\n    const evidence = String(trend.evidence ?? '').trim();\n    const score = Number(trend.score);\n    const growthRate = Number(trend.growth_rate);\n    const direction = trend.direction;\n\n    if (!name || !reason || !evidence) continue;\n    if (!Number.isFinite(score) || score < 0 || score > 100) continue;\n    if (!Number.isFinite(growthRate)) continue;\n    if (!allowedDirections.has(direction)) continue;\n\n    const key = name.toLocaleLowerCase('vi').replace(/\\s+/g, ' ');\n    if (seenNames.has(key)) continue;\n\n    seenNames.add(key);\n\n    results.push({\n      json: {\n        name,\n        score,\n        growth_rate: 0,\n        direction: 'stable',\n        reason: reason + ' Chưa có dữ liệu so sánh theo thời gian để xác minh chiều hướng tăng trưởng.',\n        evidence\n      }\n    });\n\n    if (results.length >= 5) break;\n  }\n\n  if (results.length >= 5) break;\n}\n\n// THÊM MỚI: Xử lý mảng rỗng để chống đứt luồng\nif (results.length === 0) {\n  return [{ json: { name: \"\" } }]; \n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1728,
-        0
+        2960,
+        -320
       ],
-      "id": "1ce9263a-6f64-4d0c-b233-d20ea18f5021",
+      "id": "2952897a-1422-419b-a62c-fe344ddc18b3",
       "name": "10 - Validate and Parse AI Results"
     },
     {
@@ -181,10 +181,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        2400,
-        0
+        3632,
+        -320
       ],
-      "id": "dbc45e2f-b3f8-4a3d-8d05-48052d1dca19",
+      "id": "9465459c-ea05-42d4-a595-b1e505ee8f82",
       "name": "13 - Check New Trends"
     },
     {
@@ -199,10 +199,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2608,
-        -112
+        3840,
+        -432
       ],
-      "id": "a11f9988-bc09-4a75-9e2a-4c59e68e1f3a",
+      "id": "d6304692-c740-4869-98c7-a607f1dc2b6a",
       "name": "14 - Save Trends to Backend"
     },
     {
@@ -214,10 +214,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        2816,
-        -112
+        4048,
+        -432
       ],
-      "id": "9c61cf70-b627-4448-b4e7-700d37c77576",
+      "id": "39b8d786-80fd-46dd-b6f3-6e0f88c571d2",
       "name": "15 - Respond with Saved Trends"
     },
     {
@@ -229,10 +229,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        2608,
-        112
+        3840,
+        -208
       ],
-      "id": "56552384-f5a8-4e51-a1b5-c43129694e2f",
+      "id": "3e03b4ba-a0fc-4acd-8e8f-ee1cd5b708ff",
       "name": "16 - Respond with No New Trends"
     },
     {
@@ -243,24 +243,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1952,
-        0
+        3184,
+        -320
       ],
-      "id": "ebe7e6e8-4bda-49c4-b336-ea2681ef05aa",
+      "id": "4c5e2011-9da7-463c-9471-1ee209d6de18",
       "name": "11 - Get Existing Trends",
       "executeOnce": true
     },
     {
       "parameters": {
-        "jsCode": "const normalize = (value) =>\n  String(value ?? '')\n    .trim()\n    .replace(/\\s+/g, ' ')\n    .toLocaleLowerCase('vi');\n\nconst existing = $('11 - Get Existing Trends').first().json.data ?? [];\nconst candidates = $('10 - Validate and Parse AI Results').all();\n\nconst existingNames = new Set(\n  existing.map(t => normalize(t.name))\n);\n\nconst newNames = new Set();\n\nconst filtered = candidates.filter(item => {\n  const name = normalize(item.json.name);\n\n  if (!name || existingNames.has(name) || newNames.has(name)) {\n    return false;\n  }\n\n  newNames.add(name);\n  return true;\n});\n\nreturn filtered;"
+        "jsCode": "const normalize = (value) =>\n  String(value ?? '')\n    .trim()\n    .replace(/\\s+/g, ' ')\n    .toLocaleLowerCase('vi');\n\nconst existing = $('11 - Get Existing Trends').first().json.data ?? [];\nconst candidates = $('10 - Validate and Parse AI Results').all();\n\nconst existingNames = new Set(\n  existing.map(t => normalize(t.name))\n);\n\nconst newNames = new Set();\n\nconst filtered = candidates.filter(item => {\n  const name = normalize(item.json.name);\n\n  // Nếu tên rỗng hoặc trùng lặp thì loại bỏ\n  if (!name || existingNames.has(name) || newNames.has(name)) {\n    return false;\n  }\n\n  newNames.add(name);\n  return true;\n});\n\n// THÊM MỚI: Nếu sau khi lọc mà không còn xu hướng nào mới, vẫn phải đẩy item ảo đi tiếp\nif (filtered.length === 0) {\n  return [{ json: { name: \"\" } }];\n}\n\nreturn filtered;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2176,
-        0
+        3408,
+        -320
       ],
-      "id": "8910c72d-3ea5-4033-b55e-407e8cdce34a",
+      "id": "72e3884b-ff59-427b-a9a1-00110e9b548d",
       "name": "12 - Filter New Trends",
       "alwaysOutputData": true
     },
@@ -268,29 +268,30 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "llama3.2:1b",
+          "value": "qwen2.5:3b",
           "mode": "list",
-          "cachedResultName": "llama3.2:1b"
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
             {
-              "content": "=Bạn là hệ thống phân tích xu hướng nội dung YouTube. Hãy phân tích dữ liệu video được cung cấp và xác định tối đa 5 xu hướng nội dung nổi bật.\n\nDỮ LIỆU VIDEO:\n{{ JSON.stringify($input.all().map(item => ({\n  title: item.json.title,\n  description: item.json.description,\n  competitorId: item.json.competitorId,\n  publishedAt: item.json.publishedAt,\n  url: item.json.url\n}))) }}\n\nYÊU CẦU ĐẦU RA:\nChỉ trả về một đối tượng JSON hợp lệ. Không dùng Markdown, không thêm lời giải thích bên ngoài JSON.\n\nCấu trúc bắt buộc:\n{\n  \"trends\": [\n    {\n      \"name\": \"Tên xu hướng\",\n      \"score\": 75,\n      \"growth_rate\": 0,\n      \"direction\": \"stable\",\n      \"reason\": \"Lý do nhận định dựa trên dữ liệu\",\n      \"evidence\": \"Các tiêu đề hoặc mô tả video làm bằng chứng\"\n    }\n  ]\n}\n\nQUY TẮC:\n1. Chỉ phân tích dựa trên tiêu đề và mô tả video đã cung cấp.\n2. score là số nguyên từ 0 đến 100, thể hiện mức độ nổi bật tương đối trong tập dữ liệu.\n3. growth_rate là số nguyên. Nếu không có dữ liệu so sánh theo thời gian để tính tốc độ tăng trưởng, đặt bằng 0; không được tự bịa số liệu.\n4. direction chỉ được là \"rising\", \"stable\" hoặc \"falling\". Nếu không đủ dữ liệu theo thời gian để xác định chiều hướng, đặt \"stable\" và giải thích hạn chế trong reason.\n5. evidence phải là một chuỗi văn bản, không phải mảng.\n6. Không đưa nội dung giải thích của bạn vào giữa JSON.\n7. Không tự tạo thêm trường ngoài cấu trúc đã yêu cầu.\n8. Đảm bảo mọi chuỗi được đóng bằng dấu ngoặc kép hợp lệ. Nếu nội dung chứa dấu ngoặc kép, hãy escape đúng chuẩn JSON.\n9. Đóng đầy đủ tất cả dấu ngoặc nhọn và ngoặc vuông.\n10. Nếu không có đủ dữ liệu để xác định xu hướng, trả về {\"trends\": []}.\n11. Tối đa 5 xu hướng, không lặp lại các xu hướng có ý nghĩa giống nhau.\n12. Trước khi trả lời, tự kiểm tra tính hợp lệ của JSON."
+              "content": "=Bạn là chuyên gia phân tích xu hướng thị trường nội dung. Hãy phân tích tập dữ liệu đã qua xử lý (gồm chủ đề, từ khóa, lượt xem và lượt thích) để xác định tối đa 5 xu hướng nội dung nổi bật nhất.\n\nDỮ LIỆU PHÂN TÍCH:\n{{ JSON.stringify($input.all().map(item => ({\n  topic: item.json.topic,\n  keywords: item.json.keywords,\n  category: item.json.category,\n  views: item.json.views,\n  likes: item.json.likes\n}))) }}\n\nYÊU CẦU ĐẦU RA:\nChỉ trả về một đối tượng JSON hợp lệ. Không dùng Markdown, không thêm lời giải thích bên ngoài JSON.\n\nCấu trúc bắt buộc:\n{\n  \"trends\": [\n    {\n      \"name\": \"Tên xu hướng\",\n      \"score\": 75,\n      \"growth_rate\": 0,\n      \"direction\": \"stable\",\n      \"reason\": \"Lý do nhận định dựa trên tần suất xuất hiện và lượng views/likes\",\n      \"evidence\": \"Các chủ đề hoặc từ khóa cụ thể làm bằng chứng\"\n    }\n  ]\n}\n\nQUY TẮC:\n1. Chỉ phân tích dựa trên dữ liệu chủ đề (topic), từ khóa (keywords) và tương tác (views, likes) đã cung cấp.\n2. Cách tính score (số nguyên 0-100): Xu hướng nào có chủ đề lặp lại nhiều lần VÀ có tổng views/likes áp đảo thì score càng cao.\n3. growth_rate là số nguyên. Nếu không có dữ liệu quá khứ để so sánh, đặt bằng 0; không được tự bịa số liệu.\n4. direction chỉ được là \"rising\", \"stable\" hoặc \"falling\". Đặt \"stable\" nếu không đủ dữ liệu theo thời gian.\n5. evidence phải là một chuỗi văn bản (liệt kê các topic/keyword nổi bật), không phải mảng.\n6. Không đưa nội dung giải thích của bạn vào giữa JSON.\n7. Không tự tạo thêm trường ngoài cấu trúc đã yêu cầu.\n8. Đảm bảo mọi chuỗi được đóng bằng dấu ngoặc kép hợp lệ. Escape đúng chuẩn JSON nếu có ký tự đặc biệt.\n9. Đóng đầy đủ tất cả dấu ngoặc nhọn và ngoặc vuông.\n10. Nếu không có đủ dữ liệu để xác định xu hướng, trả về {\"trends\": []}.\n11. Tối đa 5 xu hướng, không lặp lại các xu hướng có ý nghĩa giống nhau.\n12. Trước khi trả lời, tự kiểm tra tính hợp lệ của JSON."
             }
           ]
         },
         "options": {
           "temperature": 0.2,
-          "num_predict": 1024
+          "num_predict": 1024,
+          "format": "json"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        1376,
-        0
+        2608,
+        -320
       ],
-      "id": "5ba7e13f-14d8-45f4-924b-3e534d019708",
+      "id": "c4eab13f-b34f-4ba1-8a6a-814b20a4287c",
       "name": "09 - AI Trend Analysis",
       "retryOnFail": true,
       "executeOnce": true,
@@ -301,6 +302,46 @@
           "name": "Ollama account"
         }
       }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        80
+      ],
+      "id": "55932140-ca5b-4104-9844-670ff5ade95a",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jjJ0lOb2k0yhNcVx",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/jjJ0lOb2k0yhNcVx"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        4352,
+        -256
+      ],
+      "id": "00732948-2849-43b6-9131-f1f31faee573",
+      "name": "Call 'WF07 - Competitive Opportunity Detection'"
     }
   ],
   "pinData": {
@@ -493,6 +534,39 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16 - Respond with No New Trends": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF07 - Competitive Opportunity Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 - Respond with Saved Trends": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF07 - Competitive Opportunity Detection'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -501,7 +575,7 @@
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "versionId": "2c49905b-fe18-42d0-b194-fab6e88503db",
+  "versionId": "0c9d4ea4-1421-4923-9582-32eb00f1fef1",
   "meta": {
     "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },

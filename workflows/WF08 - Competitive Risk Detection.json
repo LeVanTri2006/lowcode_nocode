@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "7cd544fd-3e24-499f-be9c-7e28aadfc145",
+      "id": "cafe87e3-f05d-4df4-8a94-aad735098bd4",
       "name": "01 - Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2624,
-        1216
+        1264,
+        240
       ]
     },
     {
@@ -23,13 +23,13 @@
           ]
         }
       },
-      "id": "69b62109-38f5-4695-a262-4148ce525183",
+      "id": "d9a9b551-b2d2-4a2a-a842-56c90fae4da1",
       "name": "02 - Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2624,
-        1392
+        1264,
+        416
       ]
     },
     {
@@ -39,13 +39,13 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "c7e5a2dd-348d-4fee-a4e6-eed19d00c47b",
+      "id": "837ca1fa-e887-4621-97e0-dfd59608baa5",
       "name": "03 - Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -2624,
-        1584
+        1264,
+        608
       ],
       "webhookId": "wf08-competitive-risk-detection"
     },
@@ -56,13 +56,13 @@
           "timeout": 30000
         }
       },
-      "id": "be1c1503-93c1-406e-a90c-961b1bad0a53",
+      "id": "dd10122f-ec53-4b3b-948d-7972ae76c9aa",
       "name": "04 - Get Monitoring Alerts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -2368,
-        1392
+        1520,
+        416
       ]
     },
     {
@@ -72,13 +72,13 @@
           "timeout": 30000
         }
       },
-      "id": "f6a7f3c4-6ef3-4a79-9e89-bedebb589188",
+      "id": "b036fc39-6a1c-4d27-9222-d8f6ae10bcd4",
       "name": "05 - Get Recent Competitor Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -2128,
-        1392
+        1760,
+        416
       ]
     },
     {
@@ -107,13 +107,13 @@
         },
         "options": {}
       },
-      "id": "ee0edbe0-57ad-4554-9593-4edf82f0ca92",
+      "id": "b1c82b97-c3f9-4f90-b5dc-4ea695232016",
       "name": "06 - Normalize Input Data",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1888,
-        1392
+        2000,
+        416
       ]
     },
     {
@@ -141,35 +141,35 @@
         },
         "options": {}
       },
-      "id": "96f93c4c-608d-4f65-b7d1-a37d0c3e53e9",
+      "id": "940806f1-cfee-4908-9994-1909546a9efa",
       "name": "07 - Check Available Data",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1632,
-        1392
+        2256,
+        416
       ]
     },
     {
       "parameters": {
-        "jsCode": "const alerts = Array.isArray($json.monitoring_alerts) ? $json.monitoring_alerts : [];\nconst contents = Array.isArray($json.social_contents) ? $json.social_contents : [];\n\nconst limitedAlerts = alerts.slice(0, 20);\nconst limitedContents = contents.slice(0, 20);\n\nconst context = {\n  analyzed_at: $json.analyzed_at,\n  monitoring_alerts: limitedAlerts,\n  competitor_contents: limitedContents\n};\n\nconst prompt = `Bạn là chuyên gia phân tích rủi ro cạnh tranh. Chỉ sử dụng dữ liệu đầu vào, không tự bịa dữ kiện.\\n\\nDỮ LIỆU:\\n${JSON.stringify(context)}\\n\\nNhiệm vụ: phát hiện các rủi ro cạnh tranh có bằng chứng từ dữ liệu. Nếu dữ liệu không đủ để xác định rủi ro, trả về risks là mảng rỗng.\\n\\nChỉ trả về JSON hợp lệ, không Markdown, theo cấu trúc:\\n{\\\"risks\\\":[{\\\"risk_title\\\":\\\"Tên rủi ro\\\",\\\"severity\\\":\\\"Low|Medium|High|Critical\\\",\\\"impact_analysis\\\":\\\"Phân tích tác động dựa trên dữ liệu\\\",\\\"mitigation_strategy\\\":\\\"Biện pháp giảm thiểu\\\",\\\"evidence\\\":\\\"Dữ liệu cụ thể làm căn cứ\\\"}]}\\n\\nKhông tạo rủi ro không có căn cứ. Tối đa 10 rủi ro. Mỗi trường phải là chuỗi không rỗng.`;\n\nreturn [{ json: { prompt, analyzed_at: $json.analyzed_at, source_alert_count: alerts.length, source_content_count: contents.length } }];"
+        "jsCode": "const alerts = Array.isArray($json.monitoring_alerts) ? $json.monitoring_alerts : [];\nconst contents = Array.isArray($json.social_contents) ? $json.social_contents : [];\n\nconst limitedAlerts = alerts.slice(0, 10).map(a => ({\n  alertType: String(a.alertType ?? a.type ?? '').trim(),\n  message: String(a.message ?? '').trim().slice(0, 100),\n  platform: String(a.platform ?? '').trim()\n}));\n\nconst limitedContents = contents.slice(0, 10).map(c => ({\n  title: String(c.title ?? '').trim().slice(0, 100),\n  description: String(c.description ?? '').trim().slice(0, 150),\n  platform: String(c.platform ?? '').trim()\n}));\n\nconst context = {\n  analyzed_at: $json.analyzed_at,\n  monitoring_alerts: limitedAlerts,\n  competitor_contents: limitedContents\n};\n\nconst prompt = `Bạn là chuyên gia phân tích rủi ro cạnh tranh. Chỉ sử dụng dữ liệu đầu vào, không tự bịa dữ kiện.\n\nDỮ LIỆU:\n${JSON.stringify(context)}\n\nNhiệm vụ: Phát hiện các rủi ro cạnh tranh có bằng chứng từ dữ liệu. Nếu không đủ dữ liệu, trả về mảng risks rỗng.\n\nQUY TẮC BẮT BUỘC ĐỂ TRÁNH LỖI JSON:\n1. Chỉ trả về DUY NHẤT một đối tượng JSON hợp lệ, tuyệt đối không bọc kết quả bằng các khối Markdown.\n2. Không được để lộ dấu nháy kép bên trong các giá trị chuỗi (text), hãy dùng dấu nháy đơn nếu cần.\n3. Đảm bảo tất cả các dấu ngoặc và dấu phẩy được đóng mở chính xác.\n\nCẤU TRÚC JSON:\n{\n  \"risks\": [\n    {\n      \"risk_title\": \"Tên rủi ro ngắn gọn\",\n      \"severity\": \"Low\",\n      \"impact_analysis\": \"Phân tích tác động\",\n      \"mitigation_strategy\": \"Biện pháp giảm thiểu\",\n      \"evidence\": \"Dữ liệu làm căn cứ\"\n    }\n  ]\n}`;\n\nreturn [{ json: { prompt, analyzed_at: $json.analyzed_at, source_alert_count: alerts.length, source_content_count: contents.length } }];"
       },
-      "id": "586a3184-379f-4499-b435-9f7e4adaf2c6",
+      "id": "6794bc10-9532-41ba-8835-33eb69f1e02c",
       "name": "08 - Prepare AI Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1376,
-        1280
+        2512,
+        304
       ]
     },
     {
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "llama3.2:1b",
+          "value": "qwen2.5:3b",
           "mode": "list",
-          "cachedResultName": "llama3.2:1b"
+          "cachedResultName": "qwen2.5:3b"
         },
         "messages": {
           "values": [
@@ -180,35 +180,36 @@
         },
         "options": {
           "temperature": 0.2,
-          "num_predict": 1024
+          "num_predict": 1024,
+          "format": "json"
         }
       },
-      "id": "8e34b7df-29b2-4445-b043-77ba9771c04d",
+      "id": "8b2c90af-4a90-429e-b5cd-d1bac200d9a0",
       "name": "09 - Analyze Risks with Ollama",
       "type": "@n8n/n8n-nodes-langchain.ollama",
       "typeVersion": 1,
       "position": [
-        -1136,
-        1280
+        2752,
+        304
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "XiC4iV2mHLf0nYr9",
+          "id": "l83Vzrt95BoSfMCw",
           "name": "Ollama account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const result = $input.first().json;\nconst raw = result.content ?? result.text ?? result.response ?? result.output ?? '';\n\nif (typeof raw !== 'string' || !raw.trim()) {\n  return [{ json: { is_valid: false, error: 'Ollama returned an empty response', risks: [] } }];\n}\n\nlet parsed;\ntry {\n  const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start < 0 || end < start) throw new Error('JSON object not found');\n  parsed = JSON.parse(cleaned.slice(start, end + 1));\n} catch (error) {\n  return [{ json: { is_valid: false, error: `Could not parse Ollama JSON: ${error.message}`, risks: [] } }];\n}\n\nif (!parsed || !Array.isArray(parsed.risks)) {\n  return [{ json: { is_valid: false, error: 'AI output must contain a risks array', risks: [] } }];\n}\n\nconst allowedSeverity = ['Low', 'Medium', 'High', 'Critical'];\nconst risks = parsed.risks.map((risk) => ({\n  risk_title: typeof risk.risk_title === 'string' ? risk.risk_title.trim() : '',\n  severity: typeof risk.severity === 'string' ? risk.severity.trim() : '',\n  impact_analysis: typeof risk.impact_analysis === 'string' ? risk.impact_analysis.trim() : '',\n  mitigation_strategy: typeof risk.mitigation_strategy === 'string' ? risk.mitigation_strategy.trim() : '',\n  evidence: typeof risk.evidence === 'string' ? risk.evidence.trim() : ''\n}));\n\nconst invalidRisks = risks.filter((risk) =>\n  !risk.risk_title ||\n  !allowedSeverity.includes(risk.severity) ||\n  !risk.impact_analysis ||\n  !risk.mitigation_strategy ||\n  !risk.evidence\n);\n\nreturn [{\n  json: {\n    is_valid: invalidRisks.length === 0,\n    error: invalidRisks.length ? 'One or more risks have missing fields or invalid severity' : null,\n    analyzed_at: $('08 - Prepare AI Context').first().json.analyzed_at,\n    source_alert_count: $('08 - Prepare AI Context').first().json.source_alert_count,\n    source_content_count: $('08 - Prepare AI Context').first().json.source_content_count,\n    risks\n  }\n}];"
+        "jsCode": "const result = $input.first().json;\nconst raw = result.content ?? result.text ?? result.response ?? result.output ?? '';\n\nif (typeof raw !== 'string' || !raw.trim()) {\n  return [{ json: { is_valid: false, error: 'Ollama trả về nội dung rỗng', risks: [] } }];\n}\n\nlet parsed;\ntry {\n  const cleaned = raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start < 0 || end < start) throw new Error('Không tìm thấy JSON');\n  parsed = JSON.parse(cleaned.slice(start, end + 1));\n} catch (error) {\n  return [{ json: { is_valid: false, error: `Lỗi parse JSON: ${error.message}`, risks: [] } }];\n}\n\nif (!parsed || !Array.isArray(parsed.risks) || parsed.risks.length === 0) {\n  return [{ json: { is_valid: false, error: 'Không có rủi ro trong JSON', risks: [] } }];\n}\n\nconst severityScoreMap = { low: 25, medium: 50, high: 75, critical: 90 };\nconst ctx = $('08 - Prepare AI Context').first().json;\n\nconst validRisks = parsed.risks\n  .map((risk, index) => {\n    const title = String(risk.risk_title ?? risk.title ?? '').trim();\n    const rawSev = String(risk.severity ?? 'Medium').trim();\n    const sevLower = rawSev.toLowerCase();\n    const score = Number(risk.score) || severityScoreMap[sevLower] || 50;\n    const impact = String(risk.impact_analysis ?? risk.reason ?? risk.description ?? '').trim();\n    const mitigation = String(risk.mitigation_strategy ?? risk.recommended_action ?? '').trim();\n    const evidenceText = String(risk.evidence ?? '').trim();\n\n    return {\n      is_valid: Boolean(title && impact),\n      // Bộ trường chuẩn đồng bộ với WF06, WF07 và Frontend WF08\n      title: title,\n      name: title,\n      risk_title: title,\n      severity: sevLower,\n      level: sevLower,\n      priority: sevLower,\n      score: score,\n      risk_score: score,\n      reason: impact,\n      description: impact,\n      impact_analysis: impact,\n      mitigation: mitigation,\n      mitigation_strategy: mitigation,\n      recommended_action: mitigation,\n      evidence: {\n        description: impact,\n        impact_analysis: impact,\n        mitigation_strategy: mitigation,\n        recommended_action: mitigation,\n        raw_evidence: evidenceText,\n        score: score,\n        rank: index + 1\n      },\n      analyzed_at: ctx.analyzed_at,\n      source_alert_count: ctx.source_alert_count,\n      source_content_count: ctx.source_content_count\n    };\n  })\n  .filter(r => r.is_valid);\n\nif (validRisks.length === 0) {\n  return [{ json: { is_valid: false, error: 'Rủi ro thiếu tiêu đề hoặc phân tích', risks: [] } }];\n}\n\n// Xuất từng rủi ro thành 1 item riêng giống hệt Node 10 của WF07\nreturn validRisks.map(r => ({ json: r }));"
       },
-      "id": "82cf1318-0169-41c7-ba3f-12ddda23ffac",
+      "id": "e4e190eb-846d-4d22-9e1f-33c139acfa82",
       "name": "10 - Parse and Validate AI Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -752,
-        1280
+        3136,
+        304
       ]
     },
     {
@@ -236,13 +237,13 @@
         },
         "options": {}
       },
-      "id": "4aed674a-0c5b-4657-ad80-8d7a8c7938b3",
+      "id": "2ffdc26a-0975-402c-a512-77fe928b4dca",
       "name": "11 - Is Risk Analysis Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -512,
-        1280
+        3376,
+        304
       ]
     },
     {
@@ -250,20 +251,19 @@
         "method": "POST",
         "url": "https://enrich-tile-shale.ngrok-free.dev/api/risks",
         "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ analyzed_at: $json.analyzed_at, source_alert_count: $json.source_alert_count, source_content_count: $json.source_content_count, risks: $json.risks }) }}",
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    \"title\": $json.title,\n    \"name\": $json.name,\n    \"risk_title\": $json.risk_title,\n    \"severity\": $json.severity,\n    \"level\": $json.level,\n    \"priority\": $json.priority,\n    \"score\": $json.score,\n    \"risk_score\": $json.risk_score,\n    \"reason\": $json.reason,\n    \"description\": $json.description,\n    \"impact_analysis\": $json.impact_analysis,\n    \"mitigation\": $json.mitigation,\n    \"mitigation_strategy\": $json.mitigation_strategy,\n    \"recommended_action\": $json.recommended_action,\n    \"evidence\": $json.evidence,\n    \"analyzed_at\": $json.analyzed_at\n  }\n}}",
         "options": {
           "timeout": 30000
         }
       },
-      "id": "73a85cfc-966e-47df-9bb1-e411bbddcc41",
+      "id": "deccedcc-18dd-4801-935b-3256cad414ed",
       "name": "12 - Save Risks to Backend",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -256,
-        1200
+        3632,
+        224
       ]
     },
     {
@@ -292,13 +292,13 @@
         },
         "options": {}
       },
-      "id": "7029228b-edd2-4b3d-a641-fe1f8f0f8d32",
+      "id": "a4d57f21-9020-44de-b011-d85336150c56",
       "name": "13 - Build Success Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        0,
-        1200
+        3888,
+        224
       ]
     },
     {
@@ -327,14 +327,54 @@
         },
         "options": {}
       },
-      "id": "49474b2a-29e8-4ab6-9a83-43fbd04dfe06",
+      "id": "756f4a4f-1283-4144-a2ec-e6d9f826b5c0",
       "name": "14 - Build Error Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -256,
-        1392
+        3632,
+        416
       ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1248,
+        784
+      ],
+      "id": "55cd68d5-791d-4531-84f5-2f1a705e5622",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "RxTMXcGWYnDYlaAc",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/RxTMXcGWYnDYlaAc"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        4128,
+        368
+      ],
+      "id": "5254e295-19ac-40fb-9a27-ee7f4f0d70c2",
+      "name": "Call 'WF09 - AI Strategy Recommendation'"
     }
   ],
   "pinData": {},
@@ -484,19 +524,52 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Monitoring Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - Build Error Result": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF09 - AI Strategy Recommendation'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - Build Success Result": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF09 - AI Strategy Recommendation'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "1585cbbf-6418-412d-8dd9-32256a264d02",
+  "versionId": "0c4381b9-08dc-4c17-b217-6ed2b0ff9dcb",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "P5n7TXSXxZKcjoeE",
+  "id": "jvm4W7vrBleiAems",
   "tags": []
 }

@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "30088f41-0401-47ce-8195-99a50b0c0e35",
+      "id": "d1207dee-b093-40f6-bddd-f7c4a13c6a2e",
       "name": "01 - Start WF01",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
         0,
-        240
+        96
       ]
     },
     {
@@ -26,13 +26,13 @@
         },
         "options": {}
       },
-      "id": "9573b3ec-231a-44bb-b11e-a599259ef16d",
+      "id": "04b89243-9a1d-46d8-b628-9c529675473b",
       "name": "02 - Get Competitors",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         272,
-        112
+        0
       ]
     },
     {
@@ -40,13 +40,13 @@
         "fieldToSplitOut": "data",
         "options": {}
       },
-      "id": "a2625ad0-90c1-4c68-bccc-cac0a27ef1f4",
+      "id": "4da35a89-595c-484b-96f3-0318454be058",
       "name": "03 - Split Competitors",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
         496,
-        80
+        0
       ]
     },
     {
@@ -73,13 +73,13 @@
       "typeVersion": 4.5,
       "position": [
         720,
-        80
+        0
       ],
-      "id": "e1fed7c2-6e44-4132-9aca-30092966fa9f",
+      "id": "16ce1d8c-3a95-4bb0-9782-53fa502e0e89",
       "name": "04 - Get YouTube Channel",
       "credentials": {
         "httpQueryAuth": {
-          "id": "hTI0mEQXS1qeJ26l",
+          "id": "7ZkdfS2aYuLBsVfZ",
           "name": "Query Auth account"
         }
       }
@@ -92,9 +92,9 @@
       "typeVersion": 2,
       "position": [
         944,
-        80
+        0
       ],
-      "id": "16c68ed4-4b4c-4097-918b-ceb146da2f0e",
+      "id": "8b4a29ab-a6d7-4f41-9ab9-565feaa4d32a",
       "name": "05 - Extract Uploads Playlist"
     },
     {
@@ -125,13 +125,13 @@
       "typeVersion": 4.5,
       "position": [
         1168,
-        80
+        0
       ],
-      "id": "723fd791-11d5-4f98-beab-bde441bc1677",
+      "id": "c8c68b3a-4dac-449a-bfe9-3f6017251644",
       "name": "06 - Get Latest Videos",
       "credentials": {
         "httpQueryAuth": {
-          "id": "hTI0mEQXS1qeJ26l",
+          "id": "7ZkdfS2aYuLBsVfZ",
           "name": "Query Auth account"
         }
       }
@@ -144,9 +144,9 @@
       "typeVersion": 2,
       "position": [
         1392,
-        80
+        0
       ],
-      "id": "cf4b0611-6d04-4cf3-8a3a-7381b5d72547",
+      "id": "cbcb6717-b38e-4fbc-89d4-b42221a2ce78",
       "name": "07 - Extract Video IDs"
     },
     {
@@ -178,9 +178,9 @@
       "typeVersion": 2.3,
       "position": [
         1616,
-        80
+        0
       ],
-      "id": "4bcbbd81-14d5-463e-9f41-b87df86cfa54",
+      "id": "d1a337cf-4ba3-4841-8479-885d2018052e",
       "name": "08 - Check Video IDs"
     },
     {
@@ -191,9 +191,9 @@
       "typeVersion": 2,
       "position": [
         1840,
-        80
+        0
       ],
-      "id": "cfb40c53-2faf-4d10-ab08-d9dee3bca765",
+      "id": "adf89b80-1aad-44e7-8b19-841139a3ef73",
       "name": "09 – Build Video ID List"
     },
     {
@@ -219,14 +219,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2080,
-        80
+        2064,
+        0
       ],
-      "id": "064201eb-9808-4167-a64b-1914a6586528",
+      "id": "976751e2-2f48-40ff-baea-b09c2a822598",
       "name": "10- Get Video Details",
       "credentials": {
         "httpQueryAuth": {
-          "id": "hTI0mEQXS1qeJ26l",
+          "id": "7ZkdfS2aYuLBsVfZ",
           "name": "Query Auth account"
         }
       }
@@ -239,9 +239,9 @@
       "typeVersion": 2,
       "position": [
         2288,
-        80
+        0
       ],
-      "id": "6fe00ce1-15f1-42de-b264-040bcaa4ff78",
+      "id": "e841e7e6-890c-4b93-8487-eea23adbb52a",
       "name": "11 - Normalize Videos"
     },
     {
@@ -283,18 +283,18 @@
       "typeVersion": 4.5,
       "position": [
         2960,
-        80
+        0
       ],
-      "id": "1fe44b56-2837-4396-9bef-c6a7f664a97c",
+      "id": "ef99a19d-a7b3-429f-9b98-a4380803282e",
       "name": "13 - Save Social Metrics"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "a0UAXCUxvNxXO74O",
+          "value": "569BlH7Tg1IJhazj",
           "mode": "list",
-          "cachedResultUrl": "/workflow/a0UAXCUxvNxXO74O",
+          "cachedResultUrl": "/workflow/569BlH7Tg1IJhazj",
           "cachedResultName": "WF02 - Content Cleaning & Deduplication"
         },
         "workflowInputs": {
@@ -311,9 +311,9 @@
       "typeVersion": 1.4,
       "position": [
         2512,
-        80
+        0
       ],
-      "id": "9825c47e-b69b-4cba-8716-6d14937141bf",
+      "id": "42cbb282-325d-4d3d-9d76-b1e399e05dd7",
       "name": "14 - Execute WF02"
     },
     {
@@ -324,9 +324,9 @@
       "typeVersion": 2,
       "position": [
         2736,
-        80
+        0
       ],
-      "id": "7bf32ff3-1034-4f8a-96fc-1fb4be484e47",
+      "id": "5ea6bbb2-15b5-4269-a1fa-02fb8c98d8d5",
       "name": "15 - Prepare Metrics After WF02"
     },
     {
@@ -340,14 +340,14 @@
       "typeVersion": 2.2,
       "position": [
         0,
-        48
+        -80
       ],
-      "id": "7106203c-fc2c-45d8-8924-22e14f66447e",
+      "id": "00f48afe-bf45-496e-80e1-b45e40e7235c",
       "name": "Webhook",
       "webhookId": "58316720-8421-4bfb-a165-87f79279985c",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GFqYaeOH24J0E8zG",
+          "id": "bOuooEp40UQQ8HXs",
           "name": "Header Auth account"
         }
       }
@@ -356,10 +356,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "ErYcYrSWOHzWrVaP",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/ErYcYrSWOHzWrVaP",
-          "cachedResultName": "WF03 - AI Competitor Content Analysis"
+          "value": "Yzb8a8zH3ldQ6uOb",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/Yzb8a8zH3ldQ6uOb"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -374,11 +373,12 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.4,
       "position": [
-        3184,
-        80
+        3168,
+        0
       ],
-      "id": "f3bbcb5c-2dff-4d49-8873-4e3af2ce14fb",
-      "name": "Call 'WF03 - AI Competitor Content Analysis'"
+      "id": "f2d7ce80-403a-48f0-962a-a4276477e66a",
+      "name": "Call 'dasadasd'",
+      "executeOnce": true
     }
   ],
   "pinData": {},
@@ -541,7 +541,7 @@
       "main": [
         [
           {
-            "node": "Call 'WF03 - AI Competitor Content Analysis'",
+            "node": "Call 'dasadasd'",
             "type": "main",
             "index": 0
           }
@@ -552,14 +552,15 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "bc5c27c1-37a8-4711-b8b4-4aef206ac659",
+  "versionId": "584f8cfc-70fe-4927-b0f3-1b78b8f2f272",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "3c9jlQatB2x2PO3m",
+  "id": "zNIfzMemkcxKTIZa",
   "tags": []
 }

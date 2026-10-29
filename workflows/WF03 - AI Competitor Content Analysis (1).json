@@ -1,5 +1,5 @@
 {
-  "name": "WF03 - AI Competitor Content Analysis",
+  "name": "WF03 - AI Competitor Content Analysis (1)",
   "nodes": [
     {
       "parameters": {},
@@ -7,9 +7,9 @@
       "typeVersion": 1,
       "position": [
         16,
-        96
+        192
       ],
-      "id": "e0399e87-9c8c-46b0-b743-126df96ec8eb",
+      "id": "726a9ec8-2a73-4380-bd15-783b53193278",
       "name": "01 - Start WF03"
     },
     {
@@ -21,10 +21,11 @@
       "typeVersion": 4.5,
       "position": [
         240,
-        96
+        192
       ],
-      "id": "4e4fc644-4851-404b-803e-f67aca3de485",
-      "name": "02 - Get Clean Contents"
+      "id": "018cc00c-8581-4ef1-b621-ed88266831e9",
+      "name": "02 - Get Clean Contents",
+      "executeOnce": true
     },
     {
       "parameters": {
@@ -35,9 +36,9 @@
       "typeVersion": 1.1,
       "position": [
         464,
-        96
+        192
       ],
-      "id": "ee1ce73d-bfe4-4bb9-a486-efb827b2ffbe",
+      "id": "5f98af04-3dc8-4ac2-9bbe-e3910e8a2b7a",
       "name": "03 - Split Contents"
     },
     {
@@ -48,62 +49,22 @@
       "typeVersion": 2,
       "position": [
         640,
-        96
+        192
       ],
-      "id": "2cc21aa8-aa14-40c5-b561-42157db24bb8",
+      "id": "8fb68488-01fe-41ff-8a47-a67c06ec08af",
       "name": "04 - Prepare AI Input"
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "gpt-4o-mini",
-          "mode": "list",
-          "cachedResultName": "GPT-4O-MINI"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "={{$json.ai_prompt}}"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {
-          "textFormat": {
-            "textOptions": {
-              "type": "json_object"
-            }
-          }
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        864,
-        96
-      ],
-      "id": "26216657-b304-4a28-b4dd-2fd627fe717f",
-      "name": "05 - AI Content Analysis",
-      "credentials": {
-        "openAiApi": {
-          "id": null,
-          "name": "",
-          "__aiGatewayManaged": true
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const aiItems = $input.all();\nconst originalItems = $('04 - Prepare AI Input').all();\n\nif (aiItems.length !== originalItems.length) {\n  throw new Error(\n    `Số lượng item không khớp: AI=${aiItems.length}, Original=${originalItems.length}`\n  );\n}\n\nfunction parseAIResult(value) {\n  // Trường hợp n8n đã parse JSON thành object\n  if (value && typeof value === 'object') {\n    return value;\n  }\n\n  // Trường hợp AI trả JSON dưới dạng string\n  if (typeof value === 'string') {\n    let text = value.trim();\n\n    // Loại bỏ markdown code fence nếu AI vẫn trả về\n    text = text\n      .replace(/^```json\\s*/i, '')\n      .replace(/^```\\s*/i, '')\n      .replace(/\\s*```$/i, '')\n      .trim();\n\n    try {\n      return JSON.parse(text);\n    } catch (error) {\n      throw new Error(\n        `AI trả về JSON không hợp lệ: ${text.substring(0, 300)}`\n      );\n    }\n  }\n\n  throw new Error('Không tìm thấy nội dung AI để parse');\n}\n\nconst output = [];\n\nfor (let i = 0; i < aiItems.length; i++) {\n  const ai = aiItems[i].json;\n  const original = originalItems[i].json;\n\n  const response = ai.output?.[0];\n  const content = response?.content?.[0];\n\n  if (!content) {\n    throw new Error(\n      `Không tìm thấy AI content tại index ${i}`\n    );\n  }\n\n  const rawText = content.text;\n\n  const analysis = parseAIResult(rawText);\n\n  output.push({\n    json: {\n      id: original.id ?? null,\n      competitor_id: original.competitor_id ?? null,\n      platform: original.platform ?? null,\n      content_id: original.content_id ?? null,\n      title: original.title ?? \"\",\n      description: original.description ?? \"\",\n      url: original.url ?? null,\n      published_at: original.published_at ?? null,\n\n      topic: analysis.topic ?? null,\n      category: analysis.category ?? null,\n      content_type: analysis.content_type ?? null,\n      sentiment: analysis.sentiment ?? null,\n      keywords: Array.isArray(analysis.keywords)\n        ? analysis.keywords\n        : [],\n      summary: analysis.summary ?? null,\n      target_audience: analysis.target_audience ?? null,\n      key_message: analysis.key_message ?? null\n    }\n  });\n}\n\nreturn output;"
+        "jsCode": "const aiItems = $input.all();\nconst originalItems = $('04 - Prepare AI Input').all();\n\nif (aiItems.length !== originalItems.length) {\n  throw new Error(\n    `Số lượng item không khớp: AI=${aiItems.length}, Original=${originalItems.length}`\n  );\n}\n\nfunction parseAIResult(value) {\n  if (value && typeof value === 'object') {\n    return value;\n  }\n  if (typeof value === 'string') {\n    let text = value.trim();\n    text = text\n      .replace(/^```json\\s*/i, '')\n      .replace(/^```\\s*/i, '')\n      .replace(/\\s*```$/i, '')\n      .trim();\n    try {\n      return JSON.parse(text);\n    } catch (error) {\n      throw new Error(\n        `AI trả về JSON không hợp lệ: ${text.substring(0, 300)}`\n      );\n    }\n  }\n  throw new Error('Không tìm thấy nội dung AI để parse');\n}\n\nconst output = [];\n\nfor (let i = 0; i < aiItems.length; i++) {\n  const ai = aiItems[i].json;\n  const original = originalItems[i].json;\n\n  // Lấy dữ liệu theo CẤU TRÚC MỚI NHẤT CỦA GEMINI (Không vòng lặp)\n  // Đường dẫn: content -> parts -> [0] -> text\n  const geminiText = ai.content?.parts?.[0]?.text;\n\n  // Dự phòng cho cấu trúc OpenAI cũ (nếu sau này đổi lại)\n  const openAiText = ai.output?.[0]?.content?.[0]?.text;\n  \n  // Dự phòng cho cấu trúc Basic LLM Chain cũ\n  const basicLLMText = ai.text;\n  \n  // Ưu tiên lấy rawText theo thứ tự cấu trúc mới nhất\n  const rawText = geminiText || openAiText || basicLLMText;\n\n  if (!rawText) {\n    throw new Error(\n      `Không tìm thấy AI content tại index ${i}`\n    );\n  }\n\n  const analysis = parseAIResult(rawText);\n\n  output.push({\n    json: {\n      id: original.id ?? null,\n      competitor_id: original.competitor_id ?? null,\n      platform: original.platform ?? null,\n      content_id: original.content_id ?? null,\n      title: original.title ?? \"\",\n      description: original.description ?? \"\",\n      url: original.url ?? null,\n      published_at: original.published_at ?? null,\n\n      topic: analysis.topic ?? null,\n      category: analysis.category ?? null,\n      content_type: analysis.content_type ?? null,\n      sentiment: analysis.sentiment ?? null,\n      keywords: Array.isArray(analysis.keywords)\n        ? analysis.keywords\n        : [],\n      summary: analysis.summary ?? null,\n      target_audience: analysis.target_audience ?? null,\n      key_message: analysis.key_message ?? null\n    }\n  });\n}\n\nreturn output;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1232,
-        96
+        192
       ],
-      "id": "0e2a6733-885d-44a9-9ae9-bb90f16fb2d0",
+      "id": "e1d09db7-1d89-4134-84e3-74f6e941f241",
       "name": "06 - Parse AI Response"
     },
     {
@@ -114,9 +75,9 @@
       "typeVersion": 2,
       "position": [
         1456,
-        96
+        192
       ],
-      "id": "de0faff1-1c44-4265-b235-e9c975525f32",
+      "id": "2a236b94-62bd-4941-b395-7c5bfc383f5a",
       "name": "07 - Validate AI Output"
     },
     {
@@ -148,9 +109,9 @@
       "typeVersion": 2.3,
       "position": [
         1680,
-        96
+        192
       ],
-      "id": "113d3b14-ea56-4df1-8eff-f5b4d4512dc9",
+      "id": "079fa1ea-518d-44c3-bfb4-c6646a7edb05",
       "name": "08 - IF AI Valid"
     },
     {
@@ -161,9 +122,9 @@
       "typeVersion": 2,
       "position": [
         1904,
-        192
+        288
       ],
-      "id": "f8c6e00d-d1a6-4c8f-ab8f-a04d0c718c4a",
+      "id": "0957f525-c9f0-4764-a5bf-699755d57022",
       "name": "09 - Handle AI Error"
     },
     {
@@ -221,15 +182,15 @@
       "typeVersion": 4.5,
       "position": [
         1904,
-        0
+        96
       ],
-      "id": "5ec16a24-6057-40ce-9c98-5864e74056d7",
+      "id": "caddf3ed-83e3-44ff-a2ab-7e033b0ce6da",
       "name": "10 - Save AI Analysis"
     },
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "wf03/analyze",
+        "path": "wf031/analyze",
         "authentication": "headerAuth",
         "options": {}
       },
@@ -237,15 +198,15 @@
       "typeVersion": 2.2,
       "position": [
         0,
-        288
+        384
       ],
-      "id": "099ca234-6ae5-4769-806b-4647630a5827",
+      "id": "5142228e-29a2-4742-9cda-ca1dc430ef14",
       "name": "Webhook",
       "webhookId": "e8480804-6be1-48ee-a199-f0ff5477e4c5",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "dzLWyc1Xb1wu2u8n",
-          "name": "Header Auth account 2"
+          "id": "oc4sKvHqpMrbpRq4",
+          "name": "Header Auth account 4"
         }
       }
     },
@@ -257,19 +218,18 @@
       "typeVersion": 1.3,
       "position": [
         0,
-        -96
+        0
       ],
-      "id": "05134c80-fcac-4fec-a554-b810b18cbe0f",
+      "id": "bd3fba06-54e0-4a0e-9a47-5ff3bb1d60fe",
       "name": "When Executed by Another Workflow"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "ELHoEZLudMRJqu0W",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/ELHoEZLudMRJqu0W",
-          "cachedResultName": "WF04 - Competitor Performance Analysis"
+          "value": "7rVa88JnYSdBj3me",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/7rVa88JnYSdBj3me"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -285,10 +245,48 @@
       "typeVersion": 1.4,
       "position": [
         2128,
-        0
+        96
       ],
-      "id": "20b2c71f-b088-45ab-99d9-fb8561abe4e0",
-      "name": "Call 'WF04 - Competitor Performance Analysis'"
+      "id": "43796576-8d52-4477-8ab8-25f26fc3440e",
+      "name": "Call 'WF04 - Competitor Performance Analysis'",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.5 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.ai_prompt}}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        192
+      ],
+      "id": "429d32c6-c903-4653-9ebf-549eff1e3452",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lLIRaapznoDZdMIa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -330,18 +328,7 @@
       "main": [
         [
           {
-            "node": "05 - AI Content Analysis",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "05 - AI Content Analysis": {
-      "main": [
-        [
-          {
-            "node": "06 - Parse AI Response",
+            "node": "Message a model",
             "type": "main",
             "index": 0
           }
@@ -420,19 +407,31 @@
           }
         ]
       ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "06 - Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "versionId": "e043d80b-3076-4c30-b727-dc3b6a44e9d0",
+  "versionId": "19e212a3-4074-493e-9b32-c9244f809205",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "d5fd29622fc7d403304d84d77b9d9079dc5c6c16f85369305640b9d93f22a7a6"
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
   },
   "nodeGroups": [],
-  "id": "ErYcYrSWOHzWrVaP",
+  "id": "Yzb8a8zH3ldQ6uOb",
   "tags": []
 }
