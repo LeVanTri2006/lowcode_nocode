@@ -1,0 +1,544 @@
+{
+  "name": "WF09 - AI Strategy Recommendation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3936,
+        544
+      ],
+      "id": "f6f12ebc-db45-4487-87c1-eb3846902b47",
+      "name": "01 - Start WF09"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf09/strategies",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -3936,
+        736
+      ],
+      "id": "2e1738c9-50ca-46b5-abc2-b04685d26824",
+      "name": "02 - Webhook Trigger WF09",
+      "webhookId": "wf09-strategy-hook"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/opportunities",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -3696,
+        640
+      ],
+      "id": "e7995b01-d25a-4f1e-8cd8-53cceaed5a86",
+      "name": "03 - Get Opportunities"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/risks",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -3472,
+        640
+      ],
+      "id": "dca9a95e-0037-4225-a14d-b8610d7014d7",
+      "name": "04 - Get Risks"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -3264,
+        640
+      ],
+      "id": "412ef562-517e-415f-8f39-92a21a78045a",
+      "name": "05 - Get Market Trends"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractList(response, keys) {\n  let value = response?.data ?? response?.body ?? response;\n  if (value && !Array.isArray(value) && typeof value === 'object') {\n    for (const key of keys) {\n      if (Array.isArray(value[key])) return value[key];\n    }\n    if (value.data && typeof value.data === 'object') {\n      for (const key of keys) {\n        if (Array.isArray(value.data[key])) return value.data[key];\n      }\n    }\n    return [];\n  }\n  return Array.isArray(value) ? value : [];\n}\n\nconst opportunitiesResponse = $('03 - Get Opportunities').first().json;\nconst risksResponse = $('04 - Get Risks').first().json;\nconst trendsResponse = $('05 - Get Market Trends').first().json;\n\nconst opportunities = extractList(opportunitiesResponse, ['opportunities', 'items', 'results']);\nconst risks = extractList(risksResponse, ['risks', 'items', 'results']);\nconst trends = extractList(trendsResponse, ['trends', 'market_trends', 'items', 'results']);\n\nconst hasInputData = opportunities.length > 0 || risks.length > 0 || trends.length > 0;\nconst analyzedAt = new Date().toISOString();\n\nconst prompt = `Bạn là chuyên gia phân tích chiến lược cạnh tranh.\nHãy xây dựng một chiến lược cạnh tranh tổng thể bằng tiếng Việt dựa trên dữ liệu thực tế bên dưới.\n\nQUY TẮC:\n- Chỉ sử dụng bằng chứng có trong dữ liệu đầu vào; không tự bịa số liệu, doanh nghiệp hoặc sự kiện.\n- Kết hợp cơ hội, rủi ro và xu hướng thành một chiến lược thống nhất.\n- Nếu dữ liệu của một nhóm bị thiếu, hãy nêu rõ hạn chế đó trong mục tiêu hoặc kết quả kỳ vọng.\n- Các bước hành động phải cụ thể, có thứ tự ưu tiên và khả thi.\n- Chỉ trả về một JSON hợp lệ, không dùng Markdown hoặc khối code.\n- action_steps phải là mảng gồm ít nhất 3 bước.\n- expected_outcome phải mô tả kết quả kỳ vọng, không khẳng định kết quả chắc chắn xảy ra.\n\nCẤU TRÚC JSON BẮT BUỘC:\n{\n  \"strategy_title\": \"Tên chiến lược\",\n  \"objective\": \"Mục tiêu chiến lược\",\n  \"action_steps\": [\"Bước 1\", \"Bước 2\", \"Bước 3\"],\n  \"expected_outcome\": \"Kết quả kỳ vọng\",\n  \"supporting_evidence\": [\"Bằng chứng từ dữ liệu\"],\n  \"limitations\": [\"Hạn chế của dữ liệu nếu có\"]\n}\n\nDỮ LIỆU CƠ HỘI (${opportunities.length} bản ghi):\n${JSON.stringify(opportunities.slice(0, 30))}\n\nDỮ LIỆU RỦI RO (${risks.length} bản ghi):\n${JSON.stringify(risks.slice(0, 30))}\n\nDỮ LIỆU XU HƯỚNG (${trends.length} bản ghi):\n${JSON.stringify(trends.slice(0, 30))}\n\nThời điểm phân tích: ${analyzedAt}`;\n\nreturn [{\n  json: {\n    analyzed_at: analyzedAt,\n    opportunities,\n    risks,\n    trends,\n    opportunity_count: opportunities.length,\n    risk_count: risks.length,\n    trend_count: trends.length,\n    has_input_data: hasInputData,\n    prompt\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3040,
+        640
+      ],
+      "id": "40c6c653-d2db-40b1-a125-e322f496e357",
+      "name": "06 - Normalize Data and Prepare Prompt"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf09-has-data",
+              "leftValue": "={{ $json.has_input_data }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2816,
+        640
+      ],
+      "id": "ecf16f81-b266-4bd3-9d18-2db327d7408c",
+      "name": "07 - IF Input Data Available"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $('06 - Normalize Data and Prepare Prompt').first().json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -2592,
+        544
+      ],
+      "id": "67c8113c-a7da-4b8a-91db-f7e798d03100",
+      "name": "08 - Ollama AI Strategy Generation",
+      "credentials": {
+        "ollamaApi": {
+          "id": "XiC4iV2mHLf0nYr9",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst raw = result.content ?? result.text ?? result.response ?? result.output ?? result.message?.content ?? result.choices?.[0]?.message?.content;\n\nif (typeof raw !== 'string' || !raw.trim()) {\n  return [{ json: { parse_ok: false, parse_error: 'Ollama không trả về nội dung văn bản hợp lệ.', raw_response: result } }];\n}\n\nlet parsed;\ntry {\n  let clean = raw.trim();\n  clean = clean.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();\n  const start = clean.indexOf('{');\n  const end = clean.lastIndexOf('}');\n  if (start < 0 || end <= start) throw new Error('Không tìm thấy đối tượng JSON trong phản hồi AI.');\n  parsed = JSON.parse(clean.slice(start, end + 1));\n} catch (error) {\n  return [{ json: { parse_ok: false, parse_error: error.message, raw_response: raw } }];\n}\n\nreturn [{ json: { ...parsed, parse_ok: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2240,
+        544
+      ],
+      "id": "3f5b6e93-321a-402f-ae4d-40fcb168bc15",
+      "name": "09 - Parse AI Strategy Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const errors = [];\n  if (d.parse_ok !== true) errors.push(d.parse_error || 'Không phân tích được JSON từ AI.');\n  if (typeof d.strategy_title !== 'string' || !d.strategy_title.trim()) errors.push('Thiếu strategy_title.');\n  if (typeof d.objective !== 'string' || !d.objective.trim()) errors.push('Thiếu objective.');\n  if (!Array.isArray(d.action_steps) || d.action_steps.length < 3 || !d.action_steps.every(s => typeof s === 'string' && s.trim())) errors.push('action_steps phải là mảng có ít nhất 3 bước dạng văn bản.');\n  if (typeof d.expected_outcome !== 'string' || !d.expected_outcome.trim()) errors.push('Thiếu expected_outcome.');\n  if (d.supporting_evidence !== undefined && !Array.isArray(d.supporting_evidence)) errors.push('supporting_evidence phải là mảng.');\n  if (d.limitations !== undefined && !Array.isArray(d.limitations)) errors.push('limitations phải là mảng.');\n\n  return { json: { ...d, is_valid: errors.length === 0, validation_errors: errors } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2016,
+        544
+      ],
+      "id": "35b25c8d-1ea7-4ee5-8e07-cb15b82786c7",
+      "name": "10 - Validate Strategy Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf09-strategy-valid",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1792,
+        544
+      ],
+      "id": "24c7aab2-4b4d-4131-9c63-addfd057dbbb",
+      "name": "11 - IF Strategy Valid"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/strategies",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { strategy_title: $json.strategy_title, objective: $json.objective, action_steps: $json.action_steps, expected_outcome: $json.expected_outcome, supporting_evidence: $json.supporting_evidence ?? [], limitations: $json.limitations ?? [], analyzed_at: $('06 - Normalize Data and Prepare Prompt').first().json.analyzed_at, source_counts: { opportunities: $('06 - Normalize Data and Prepare Prompt').first().json.opportunity_count, risks: $('06 - Normalize Data and Prepare Prompt').first().json.risk_count, trends: $('06 - Normalize Data and Prepare Prompt').first().json.trend_count } } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1568,
+        432
+      ],
+      "id": "0e4716d7-7283-40d3-86d7-813fd010c8d7",
+      "name": "12 - Save Strategy to Backend"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "wf09-success",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "wf09-message",
+              "name": "message",
+              "value": "Chiến lược đã được tạo và gửi yêu cầu lưu tới Backend.",
+              "type": "string"
+            },
+            {
+              "id": "wf09-strategy",
+              "name": "strategy",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.strategy_title }}",
+              "type": "string"
+            },
+            {
+              "id": "wf09-objective",
+              "name": "objective",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.objective }}",
+              "type": "string"
+            },
+            {
+              "id": "wf09-steps",
+              "name": "action_steps",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.action_steps }}",
+              "type": "array"
+            },
+            {
+              "id": "wf09-outcome",
+              "name": "expected_outcome",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.expected_outcome }}",
+              "type": "string"
+            },
+            {
+              "id": "wf09-evidence",
+              "name": "supporting_evidence",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.supporting_evidence ?? [] }}",
+              "type": "array"
+            },
+            {
+              "id": "wf09-limitations",
+              "name": "limitations",
+              "value": "={{ $('10 - Validate Strategy Output').first().json.limitations ?? [] }}",
+              "type": "array"
+            },
+            {
+              "id": "wf09-save-response",
+              "name": "backend_response",
+              "value": "={{ $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        432
+      ],
+      "id": "11031013-8d73-43ec-87ec-df1c74172276",
+      "name": "13 - Build Success Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "wf09-error-success",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "wf09-error-message",
+              "name": "message",
+              "value": "AI không tạo được chiến lược đúng định dạng. Chưa gửi dữ liệu để lưu.",
+              "type": "string"
+            },
+            {
+              "id": "wf09-error-details",
+              "name": "errors",
+              "value": "={{ $json.validation_errors ?? [$json.parse_error ?? 'Phản hồi AI không hợp lệ.'] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1568,
+        640
+      ],
+      "id": "71fd4119-e2ba-4e7b-89b2-d806174b744e",
+      "name": "14 - Build Invalid Strategy Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "wf09-no-data-success",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "wf09-no-data-message",
+              "name": "message",
+              "value": "Không tìm thấy dữ liệu cơ hội, rủi ro hoặc xu hướng để tạo chiến lược.",
+              "type": "string"
+            },
+            {
+              "id": "wf09-no-data-counts",
+              "name": "source_counts",
+              "value": "={{ { opportunities: $json.opportunity_count, risks: $json.risk_count, trends: $json.trend_count } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2592,
+        752
+      ],
+      "id": "7d8d9518-d042-4e71-854d-1d0941f65abb",
+      "name": "15 - Build No Input Data Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "01 - Start WF09": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Webhook Trigger WF09": {
+      "main": [
+        [
+          {
+            "node": "03 - Get Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get Opportunities": {
+      "main": [
+        [
+          {
+            "node": "04 - Get Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Get Risks": {
+      "main": [
+        [
+          {
+            "node": "05 - Get Market Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Get Market Trends": {
+      "main": [
+        [
+          {
+            "node": "06 - Normalize Data and Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Normalize Data and Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "07 - IF Input Data Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - IF Input Data Available": {
+      "main": [
+        [
+          {
+            "node": "08 - Ollama AI Strategy Generation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "15 - Build No Input Data Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Ollama AI Strategy Generation": {
+      "main": [
+        [
+          {
+            "node": "09 - Parse AI Strategy Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Parse AI Strategy Response": {
+      "main": [
+        [
+          {
+            "node": "10 - Validate Strategy Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - Validate Strategy Output": {
+      "main": [
+        [
+          {
+            "node": "11 - IF Strategy Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - IF Strategy Valid": {
+      "main": [
+        [
+          {
+            "node": "12 - Save Strategy to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "14 - Build Invalid Strategy Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - Save Strategy to Backend": {
+      "main": [
+        [
+          {
+            "node": "13 - Build Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c7dfb0d0-d495-4b62-b56c-fa235a14708f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "064c84cf7cceb51e30ff5f1a97f1710e4c80f8e8024a2efe922a0fec31af10c4"
+  },
+  "nodeGroups": [],
+  "id": "UmdyjyQkp5oseu0k",
+  "tags": []
+}

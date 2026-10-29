@@ -1,0 +1,179 @@
+{
+  "name": "WF07 - Competitive Opportunity Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf07-detect-opportunities",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        -80
+      ],
+      "id": "f50805d0-64ba-4375-9370-14142882f680",
+      "name": "02 - Webhook Trigger WF07",
+      "webhookId": "4d45c687-f0cc-4139-a9f5-ff06b248472b"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        -256
+      ],
+      "id": "652a9d1f-1210-468b-8d4f-c52552ee4bb8",
+      "name": "01 - Srart WF07"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/ai-analyses",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        -352
+      ],
+      "id": "9f315e42-006b-4235-9eb6-260d15bd7f7e",
+      "name": "03 - Get AI Analyses"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nif (response.success !== true) {\n  throw new Error('API AI Analyses trả về success không hợp lệ');\n}\n\nif (!Array.isArray(response.data)) {\n  throw new Error('API AI Analyses không trả về mảng data');\n}\n\nconst valid = [];\nconst invalid = [];\n\nfor (const row of response.data) {\n  const topic = row.topic?.trim();\n  const summary = row.summary?.trim();\n  const social = row.socialContent;\n\n  if (!topic || !summary || !social?.title || !social?.competitor?.name) {\n    invalid.push({\n      id: row.id ?? null,\n      reason: 'Thiếu topic, summary, title hoặc tên đối thủ',\n    });\n    continue;\n  }\n\n  valid.push({\n    json: {\n      analysisId: row.id,\n      contentId: row.contentId,\n      topic,\n      category: row.category ?? null,\n      contentType: row.contentType ?? null,\n      sentiment: row.sentiment ?? null,\n      keywords: Array.isArray(row.keywords) ? row.keywords : [],\n      summary,\n      targetAudience: row.targetAudience ?? null,\n      keyMessage: row.keyMessage ?? null,\n      competitor: social.competitor.name,\n      competitorId: social.competitorId ?? null,\n      platform: social.platform ?? null,\n      title: social.title,\n      url: social.url ?? null,\n      publishedAt: social.publishedAt ?? null,\n    },\n  });\n}\n\nreturn valid.length > 0\n  ? valid\n  : [{\n      json: {\n        error: true,\n        message: 'Không có bản phân tích nào đạt yêu cầu',\n        invalidCount: invalid.length,\n        invalidRecords: invalid,\n      },\n    }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -352
+      ],
+      "id": "74792cc3-8f74-4446-8a65-1eb1a172a212",
+      "name": "04 - Validate AI Analyses"
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/trends",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        -176
+      ],
+      "id": "ce200cd5-20f2-46cc-9eb7-fb824d0084cc",
+      "name": "05 - Get Trends",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://enrich-tile-shale.ngrok-free.dev/api/performance-data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        0
+      ],
+      "id": "1d3c3ca1-2655-4db6-aa97-4fd15f4d2de3",
+      "name": "06 - Get Performance Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "02 - Webhook Trigger WF07": {
+      "main": [
+        [
+          {
+            "node": "03 - Get AI Analyses",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "05 - Get Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "06 - Get Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 - Srart WF07": {
+      "main": [
+        [
+          {
+            "node": "03 - Get AI Analyses",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "05 - Get Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "06 - Get Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Get AI Analyses": {
+      "main": [
+        [
+          {
+            "node": "04 - Validate AI Analyses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Validate AI Analyses": {
+      "main": [
+        []
+      ]
+    },
+    "05 - Get Trends": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "e2b60bd8-f2bf-4281-8656-9b2bbb598365",
+  "meta": {
+    "instanceId": "b8568f5c87da4c0ef79b9c4705b7d2c3ff88456556ee95020499e0c2110095a2"
+  },
+  "nodeGroups": [],
+  "id": "jjJ0lOb2k0yhNcVx",
+  "tags": []
+}
