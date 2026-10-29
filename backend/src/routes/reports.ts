@@ -4,9 +4,14 @@ import { prisma } from '../prisma/client';
 const router = Router();
 
 // Lấy danh sách báo cáo
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const { reportType, report_type } = req.query;
+    const type = reportType || report_type;
+    const where = type ? { reportType: String(type) } : {};
+
     const data = await prisma.report.findMany({
+      where,
       orderBy: { generatedAt: 'desc' }
     });
 
@@ -19,6 +24,40 @@ router.get('/', async (_req, res) => {
     return res.status(500).json({
       success: false,
       message: error?.message || 'Failed to fetch reports'
+    });
+  }
+});
+
+// Lấy chi tiết một báo cáo
+router.get('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid report ID'
+      });
+    }
+
+    const data = await prisma.report.findUnique({
+      where: { id }
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Failed to fetch report'
     });
   }
 });

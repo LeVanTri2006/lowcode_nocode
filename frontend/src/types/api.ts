@@ -50,3 +50,13 @@ export interface OpportunityItem {
   evidence: any;
   createdAt: string;
 }
+
+export interface RiskItem {
+  id: number;
+  title: string;
+  score: number;
+  severity: string;
+  reason: string;
+  evidence: any;
+  createdAt: string;
+}

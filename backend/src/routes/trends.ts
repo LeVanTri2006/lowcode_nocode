@@ -4,17 +4,59 @@ import { prisma } from '../prisma/client';
 const router = Router();
 
 // Lấy danh sách xu hướng
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const { direction } = req.query;
+    const where = direction ? { direction: String(direction) } : {};
+
     const data = await prisma.trend.findMany({
+      where,
       orderBy: { detectedAt: 'desc' }
     });
 
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      count: data.length,
+      data
+    });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       message: error?.message || 'Failed to fetch trends'
+    });
+  }
+});
+
+// Lấy chi tiết một xu hướng
+router.get('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trend ID'
+      });
+    }
+
+    const data = await prisma.trend.findUnique({
+      where: { id }
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trend not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Failed to fetch trend'
     });
   }
 });

@@ -32,6 +32,8 @@ services:
       AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,https://enrich-tile-shale.ngrok-free.dev}
     depends_on:
       - db
+    volumes:
+      - ./backend/src:/app/src
     command: npm run dev
 
 volumes:

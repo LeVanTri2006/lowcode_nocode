@@ -15,7 +15,8 @@ import {
   X,
   Target,
 } from 'lucide-react';
-import { getReports, getStrategies } from '../../services/api/reportsApi';
+import { getReports } from '../../services/api/reportsApi';
+import { getStrategies } from '../../services/api/strategiesApi';
 import { requestWf09Run } from '../../services/api/workflowRunsApi';
 import type { ReportItem, StrategyItem } from '../../types/api';
 import { useToast } from '../../components/common/Toast';
@@ -216,7 +217,7 @@ export const WF09Page: React.FC = () => {
           <div className="kpi-icon-wrap orange"><ShieldAlert size={22} /></div>
           <div className="kpi-details">
             <span className="kpi-label">Rủi ro & Cảnh báo</span>
-            <span className="kpi-number">{totalCounts.risks + totalCounts.alerts || 16}</span>
+            <span className="kpi-number">{totalCounts.risks + totalCounts.alerts}</span>
             <span className="kpi-subtext">Đã tổng hợp trong báo cáo</span>
           </div>
         </div>
@@ -225,7 +226,7 @@ export const WF09Page: React.FC = () => {
           <div className="kpi-icon-wrap green"><Clock size={22} /></div>
           <div className="kpi-details">
             <span className="kpi-label">Xu hướng & Nội dung</span>
-            <span className="kpi-number">{totalCounts.trends + totalCounts.contents || 78}</span>
+            <span className="kpi-number">{totalCounts.trends + totalCounts.contents}</span>
             <span className="kpi-subtext positive">100% dữ liệu đã phân tích</span>
           </div>
         </div>

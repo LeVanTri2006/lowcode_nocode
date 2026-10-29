@@ -4,9 +4,13 @@ import { prisma } from '../prisma/client';
 const router = Router();
 
 // Lấy danh sách cơ hội
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const { priority } = req.query;
+    const where = priority ? { priority: String(priority) } : {};
+
     const data = await prisma.opportunity.findMany({
+      where,
       orderBy: { createdAt: 'desc' }
     });
 
@@ -19,6 +23,40 @@ router.get('/', async (_req, res) => {
     return res.status(500).json({
       success: false,
       message: error?.message || 'Failed to fetch opportunities'
+    });
+  }
+});
+
+// Lấy chi tiết một cơ hội
+router.get('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid opportunity ID'
+      });
+    }
+
+    const data = await prisma.opportunity.findUnique({
+      where: { id }
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Opportunity not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Failed to fetch opportunity'
     });
   }
 });
