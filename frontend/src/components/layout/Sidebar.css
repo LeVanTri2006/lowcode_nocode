@@ -1,9 +1,6 @@
 .app-sidebar {
   width: var(--sidebar-width);
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  left: 0;
+  height: 100%;
   background-color: var(--bg-sidebar);
   color: var(--text-white);
   display: flex;
@@ -12,6 +9,7 @@
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
 .sidebar-backdrop {
@@ -106,10 +104,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   color: #94A3B8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.18s ease;
   position: relative;
@@ -125,9 +123,10 @@
 }
 
 .nav-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.35;
+  word-break: break-word;
+  flex: 1;
 }
 
 .nav-link:hover {

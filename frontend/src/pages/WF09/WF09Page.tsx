@@ -14,6 +14,10 @@ import {
   ShieldAlert,
   X,
   Target,
+  Lightbulb,
+  AlertTriangle,
+  CheckCircle,
+  Database,
 } from 'lucide-react';
 import { getReports } from '../../services/api/reportsApi';
 import { getStrategies } from '../../services/api/strategiesApi';
@@ -27,6 +31,18 @@ const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 1
     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
   </svg>
 );
+
+export const formatReportType = (type?: string): string => {
+  if (!type) return 'Chiến lược Cạnh tranh';
+  const t = type.toLowerCase().trim();
+  if (t === 'competitive_strategy' || t === 'strategic') return 'Chiến lược Cạnh tranh';
+  if (t === 'weekly') return 'Báo cáo Tuần';
+  if (t === 'monthly') return 'Báo cáo Tháng';
+  if (t === 'daily') return 'Báo cáo Ngày';
+  if (t === 'market_trend' || t === 'trend') return 'Xu hướng Thị trường';
+  if (t === 'performance') return 'Hiệu suất Đối thủ';
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 export const WF09Page: React.FC = () => {
   const { showToast } = useToast();
@@ -108,35 +124,107 @@ export const WF09Page: React.FC = () => {
 
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
+      const formattedType = formatReportType(r.reportType);
       const matchSearch =
         r.title.toLowerCase().includes(search.toLowerCase()) ||
         r.reportType.toLowerCase().includes(search.toLowerCase()) ||
+        formattedType.toLowerCase().includes(search.toLowerCase()) ||
         (r.executiveSummary || '').toLowerCase().includes(search.toLowerCase());
-      const matchType = typeFilter === 'ALL' || r.reportType.toLowerCase() === typeFilter.toLowerCase();
+      const matchType =
+        typeFilter === 'ALL' ||
+        r.reportType.toLowerCase() === typeFilter.toLowerCase() ||
+        (typeFilter === 'competitive_strategy' && (r.reportType.toLowerCase() === 'competitive_strategy' || r.reportType.toLowerCase() === 'strategic'));
       return matchSearch && matchType;
     });
   }, [reports, search, typeFilter]);
 
+  // Aggregate real data metrics from reports
   const totalCounts = useMemo(() => {
     let risks = 0;
     let alerts = 0;
     let trends = 0;
     let contents = 0;
+    let opportunities = 0;
+
     reports.forEach((r) => {
-      if (r.reportData?.data_counts) {
-        risks += r.reportData.data_counts.risks || 0;
-        alerts += r.reportData.data_counts.alerts || 0;
-        trends += r.reportData.data_counts.trends || 0;
-        contents += r.reportData.data_counts.contents || 0;
+      const counts = r.reportData?.source_counts || r.reportData?.data_counts;
+      if (counts) {
+        risks += Number(counts.risks || 0);
+        alerts += Number(counts.alerts || 0);
+        trends += Number(counts.trends || 0);
+        contents += Number(counts.contents || 0);
+        opportunities += Number(counts.opportunities || 0);
       }
     });
-    return { risks, alerts, trends, contents };
+
+    return { risks, alerts, trends, contents, opportunities };
   }, [reports]);
 
-  const highPriorityStrategies = useMemo(
-    () => strategies.filter((s) => s.priority === 'HIGH' || s.priority === 'Cao'),
-    [strategies]
-  );
+  // Priority count with case-insensitive normalization
+  const priorityCounts = useMemo(() => {
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+
+    strategies.forEach((s) => {
+      const p = (s.priority || '').toLowerCase();
+      if (p.includes('high') || p.includes('cao')) {
+        high++;
+      } else if (p.includes('medium') || p.includes('trung')) {
+        medium++;
+      } else if (p.includes('low') || p.includes('thấp')) {
+        low++;
+      } else {
+        medium++;
+      }
+    });
+
+    return { high, medium, low };
+  }, [strategies]);
+
+  const priorityStats = useMemo(() => {
+    return [
+      {
+        label: 'Ưu tiên cao (HIGH)',
+        count: priorityCounts.high,
+        color: '#ef4444',
+      },
+      {
+        label: 'Ưu tiên trung bình (MEDIUM)',
+        count: priorityCounts.medium,
+        color: '#f59e0b',
+      },
+      {
+        label: 'Ưu tiên thấp (LOW)',
+        count: priorityCounts.low,
+        color: '#3b82f6',
+      },
+    ];
+  }, [priorityCounts]);
+
+  // Structured recommendations parser for selected report
+  const selectedReportRecommendations = useMemo(() => {
+    if (!selectedReport?.reportData?.strategic_recommendations) return [];
+    const raw = selectedReport.reportData.strategic_recommendations;
+    if (!Array.isArray(raw)) return [];
+
+    return raw.map((rec: any, idx: number) => {
+      if (typeof rec === 'string') {
+        return {
+          id: idx + 1,
+          title: `Khuyến nghị thực thi #${idx + 1}`,
+          description: rec,
+          priority: 'Chiến lược đề xuất',
+        };
+      }
+      return {
+        id: idx + 1,
+        title: rec.title || `Khuyến nghị #${idx + 1}`,
+        description: rec.description || rec.action || rec.content || JSON.stringify(rec),
+        priority: rec.priority || 'Đề xuất',
+      };
+    });
+  }, [selectedReport]);
 
   return (
     <div className="wf09-page-container fade-in">
@@ -193,13 +281,13 @@ export const WF09Page: React.FC = () => {
         </div>
       )}
 
-      {/* TOP ROW: 4 KPI CARDS (Real backend data) */}
+      {/* TOP ROW: 4 KPI CARDS */}
       <div className="wf09-kpi-grid">
         <div className="ui-card kpi-card-clean">
           <div className="kpi-icon-wrap blue"><FileText size={22} /></div>
           <div className="kpi-details">
             <span className="kpi-label">Báo cáo đã tạo (DB)</span>
-            <span className="kpi-number">{reports.length}</span>
+            <span className="kpi-number">{loading ? '…' : reports.length}</span>
             <span className="kpi-subtext positive">Dữ liệu thực từ backend</span>
           </div>
         </div>
@@ -208,8 +296,12 @@ export const WF09Page: React.FC = () => {
           <div className="kpi-icon-wrap purple"><Sparkles size={22} /></div>
           <div className="kpi-details">
             <span className="kpi-label">Chiến lược đề xuất</span>
-            <span className="kpi-number">{strategies.length}</span>
-            <span className="kpi-subtext positive">{highPriorityStrategies.length} chiến lược ưu tiên cao</span>
+            <span className="kpi-number">{loading ? '…' : strategies.length}</span>
+            <span className="kpi-subtext positive">
+              {priorityCounts.high > 0
+                ? `${priorityCounts.high} ưu tiên cao`
+                : `${priorityCounts.medium} ưu tiên trung bình`}
+            </span>
           </div>
         </div>
 
@@ -217,7 +309,9 @@ export const WF09Page: React.FC = () => {
           <div className="kpi-icon-wrap orange"><ShieldAlert size={22} /></div>
           <div className="kpi-details">
             <span className="kpi-label">Rủi ro & Cảnh báo</span>
-            <span className="kpi-number">{totalCounts.risks + totalCounts.alerts}</span>
+            <span className="kpi-number">
+              {loading ? '…' : totalCounts.risks > 0 ? totalCounts.risks : totalCounts.alerts}
+            </span>
             <span className="kpi-subtext">Đã tổng hợp trong báo cáo</span>
           </div>
         </div>
@@ -225,8 +319,10 @@ export const WF09Page: React.FC = () => {
         <div className="ui-card kpi-card-clean">
           <div className="kpi-icon-wrap green"><Clock size={22} /></div>
           <div className="kpi-details">
-            <span className="kpi-label">Xu hướng & Nội dung</span>
-            <span className="kpi-number">{totalCounts.trends + totalCounts.contents}</span>
+            <span className="kpi-label">Cơ hội & Xu hướng</span>
+            <span className="kpi-number">
+              {loading ? '…' : totalCounts.opportunities > 0 ? totalCounts.opportunities : strategies.length}
+            </span>
             <span className="kpi-subtext positive">100% dữ liệu đã phân tích</span>
           </div>
         </div>
@@ -234,7 +330,7 @@ export const WF09Page: React.FC = () => {
 
       {/* MIDDLE ROW: 2 CARDS */}
       <div className="wf09-middle-grid">
-        {/* Left: Lịch & Dòng thời gian báo cáo */}
+        {/* Left: Thời điểm tạo báo cáo gần nhất */}
         <div className="ui-card wf09-calendar-card">
           <div className="card-section-title">
             <Calendar size={16} className="text-primary" />
@@ -242,7 +338,9 @@ export const WF09Page: React.FC = () => {
           </div>
 
           <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {reports.length === 0 ? (
+            {loading ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Đang tải báo cáo gần nhất...</p>
+            ) : reports.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Chưa có bản ghi báo cáo nào trong hệ thống.</p>
             ) : (
               reports.slice(0, 4).map((rep) => (
@@ -252,22 +350,28 @@ export const WF09Page: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     borderRadius: '8px',
                     backgroundColor: 'var(--bg-hover)',
                     border: '1px solid var(--border-light)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <YoutubeIcon size={16} className="yt-red" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <YoutubeIcon size={18} className="yt-red" />
                     <div>
-                      <strong style={{ fontSize: '13px', display: 'block' }}>{rep.title}</strong>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Loại: {rep.reportType} {rep.period?.from ? `(${rep.period.from} → ${rep.period.to})` : ''}
+                      <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-main)' }}>
+                        {rep.title}
+                      </strong>
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        Loại:{' '}
+                        <strong style={{ color: 'var(--text-secondary)' }}>
+                          {formatReportType(rep.reportType)}
+                        </strong>
+                        {rep.generatedAt ? ` · ${new Date(rep.generatedAt).toLocaleString('vi-VN')}` : ''}
                       </span>
                     </div>
                   </div>
-                  <span className="badge-sched sent" style={{ fontSize: '11px' }}>
+                  <span className="badge-sched sent" style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
                     ● Hoàn thành
                   </span>
                 </div>
@@ -283,36 +387,32 @@ export const WF09Page: React.FC = () => {
               <BarChart2 size={16} className="text-primary" />
               <span>Phân bố mức độ ưu tiên chiến lược</span>
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tổng {strategies.length} chiến lược</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Tổng {strategies.length} chiến lược
+            </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
-            {[
-              {
-                label: 'Ưu tiên cao (HIGH)',
-                count: strategies.filter((s) => s.priority === 'HIGH' || s.priority === 'Cao').length,
-                color: '#ef4444',
-              },
-              {
-                label: 'Ưu tiên trung bình (MEDIUM)',
-                count: strategies.filter((s) => s.priority === 'MEDIUM' || s.priority === 'Trung bình').length,
-                color: '#f59e0b',
-              },
-              {
-                label: 'Ưu tiên thấp (LOW)',
-                count: strategies.filter((s) => s.priority === 'LOW' || s.priority === 'Thấp').length,
-                color: '#3b82f6',
-              },
-            ].map((item) => {
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+            {priorityStats.map((item) => {
               const pct = strategies.length > 0 ? Math.round((item.count / strategies.length) * 100) : 0;
               return (
-                <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ fontWeight: 600 }}>{item.label}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>{item.count} ({pct}%)</span>
+                <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, color: item.count > 0 ? item.color : 'var(--text-muted)' }}>
+                      {item.count} ({pct}%)
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-light)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: item.color, borderRadius: '4px' }} />
+                  <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        backgroundColor: item.color,
+                        borderRadius: '4px',
+                        transition: 'width 0.4s ease',
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -338,9 +438,9 @@ export const WF09Page: React.FC = () => {
                 onChange={(e) => setTypeFilter(e.target.value)}
               >
                 <option value="ALL">Loại báo cáo: Tất cả</option>
-                <option value="strategic">Strategic</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="competitive_strategy">Chiến lược Cạnh tranh</option>
+                <option value="weekly">Báo cáo Tuần</option>
+                <option value="monthly">Báo cáo Tháng</option>
               </select>
 
               <div className="search-input-wrap">
@@ -370,10 +470,16 @@ export const WF09Page: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredReports.length === 0 ? (
+                {loading ? (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                      {loading ? 'Đang tải báo cáo từ máy chủ...' : 'Không tìm thấy báo cáo nào trong cơ sở dữ liệu.'}
+                      Đang tải danh sách báo cáo...
+                    </td>
+                  </tr>
+                ) : filteredReports.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      Không tìm thấy báo cáo nào phù hợp.
                     </td>
                   </tr>
                 ) : (
@@ -381,9 +487,9 @@ export const WF09Page: React.FC = () => {
                     <tr key={r.id}>
                       <td className="text-muted-cell font-semibold">{i + 1}</td>
                       <td className="font-semibold">{r.title}</td>
-                      <td className="text-muted-cell">
-                        <span style={{ textTransform: 'capitalize', padding: '2px 8px', borderRadius: '4px', background: 'var(--bg-hover)', fontSize: '11px' }}>
-                          {r.reportType}
+                      <td>
+                        <span className="report-type-badge">
+                          {formatReportType(r.reportType)}
                         </span>
                       </td>
                       <td>
@@ -440,55 +546,62 @@ export const WF09Page: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
-              {strategies.slice(0, 6).map((strat) => (
-                <div
-                  key={strat.id}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-hover)',
-                    border: '1px solid var(--border-light)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: '13px' }}>{strat.title}</strong>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        backgroundColor: strat.priority === 'HIGH' || strat.priority === 'Cao' ? '#fee2e2' : '#fef3c7',
-                        color: strat.priority === 'HIGH' || strat.priority === 'Cao' ? '#dc2626' : '#d97706',
-                      }}
-                    >
-                      {strat.priority}
-                    </span>
+              {strategies.length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Chưa có chiến lược nào từ AI.</p>
+              ) : (
+                strategies.slice(0, 6).map((strat) => (
+                  <div
+                    key={strat.id}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--bg-hover)',
+                      border: '1px solid var(--border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{strat.title}</strong>
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor:
+                            strat.priority?.toLowerCase() === 'high' ? '#fee2e2' : '#fef3c7',
+                          color:
+                            strat.priority?.toLowerCase() === 'high' ? '#dc2626' : '#d97706',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {strat.priority}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                      {strat.description || strat.objective}
+                    </p>
+                    <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '2px' }}>
+                      Độ tin cậy: {Math.round((strat.confidence || 0.7) * 100)}%
+                    </div>
                   </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                    {strat.description || strat.objective}
-                  </p>
-                  <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '2px' }}>
-                    Độ tin cậy: {Math.round(strat.confidence * 100)}%
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* REPORT DETAILS MODAL */}
+      {/* FULL REPORT DETAILS MODAL */}
       {selectedReport && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(3px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -500,86 +613,233 @@ export const WF09Page: React.FC = () => {
           <div
             className="ui-card"
             style={{
-              maxWidth: '800px',
+              maxWidth: '840px',
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: '90vh',
               overflowY: 'auto',
               padding: '24px',
               backgroundColor: 'var(--bg-card)',
               position: 'relative',
-              borderRadius: '12px',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-light)', paddingBottom: '14px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>{selectedReport.title}</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Loại: {selectedReport.reportType} · Ngày tạo: {new Date(selectedReport.generatedAt).toLocaleString('vi-VN')}
-                </span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {selectedReport.title}
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Loại: <strong style={{ color: 'var(--primary)' }}>{formatReportType(selectedReport.reportType)}</strong>
+                  {' · '}
+                  Ngày tạo: {new Date(selectedReport.generatedAt).toLocaleString('vi-VN')}
+                </div>
               </div>
               <button
                 type="button"
                 className="action-icon-btn"
                 onClick={() => setSelectedReport(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}
+                title="Đóng hộp thoại"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Executive Summary */}
-            <div style={{ marginTop: '16px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Tóm tắt điều hành (Executive Summary)</h4>
+            {/* 1. Executive Summary */}
+            <div style={{ marginTop: '18px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={16} className="text-primary" />
+                <span>Tóm tắt điều hành (Executive Summary)</span>
+              </h4>
               <div
                 style={{
                   fontSize: '13px',
-                  lineHeight: '1.6',
+                  lineHeight: '1.65',
                   color: 'var(--text-main)',
-                  backgroundColor: 'var(--bg-hover)',
-                  padding: '12px',
+                  backgroundColor: '#F8FAFC',
+                  padding: '14px 16px',
                   borderRadius: '8px',
-                  whiteSpace: 'pre-line',
+                  border: '1px solid #E2E8F0',
+                  borderLeft: '4px solid #3B82F6',
                 }}
               >
-                {selectedReport.executiveSummary || 'Không có tóm tắt.'}
+                {selectedReport.executiveSummary || 'Không có bản tóm tắt điều hành.'}
               </div>
             </div>
 
-            {/* Data Counts */}
-            {selectedReport.reportData?.data_counts && (
-              <div style={{ marginTop: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Chỉ số tổng hợp dữ liệu</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                  {Object.entries(selectedReport.reportData.data_counts).map(([k, v]) => (
-                    <div key={k} style={{ padding: '8px 12px', background: 'var(--bg-hover)', borderRadius: '6px', textAlign: 'center' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k}</span>
-                      <strong style={{ display: 'block', fontSize: '16px' }}>{String(v)}</strong>
-                    </div>
-                  ))}
+            {/* 2. Source Counts (Chỉ số dữ liệu tổng hợp) */}
+            {selectedReport.reportData?.source_counts && (
+              <div style={{ marginTop: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Database size={16} className="text-primary" />
+                  <span>Dữ liệu thị trường đã tổng hợp</span>
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>RỦI RO THỊ TRƯỜNG</span>
+                    <strong style={{ display: 'block', fontSize: '18px', color: '#DC2626', marginTop: 2 }}>
+                      {selectedReport.reportData.source_counts.risks ?? 0}
+                    </strong>
+                  </div>
+                  <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>CƠ HỘI NỘI DUNG</span>
+                    <strong style={{ display: 'block', fontSize: '18px', color: '#16A34A', marginTop: 2 }}>
+                      {selectedReport.reportData.source_counts.opportunities ?? 0}
+                    </strong>
+                  </div>
+                  <div style={{ padding: '10px 14px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#1E40AF', fontWeight: 600 }}>CHIẾN LƯỢC ĐỀ XUẤT</span>
+                    <strong style={{ display: 'block', fontSize: '18px', color: '#2563EB', marginTop: 2 }}>
+                      {selectedReport.reportData.source_counts.strategies ?? 0}
+                    </strong>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Recommendations */}
-            {selectedReport.reportData?.strategic_recommendations && (
-              <div style={{ marginTop: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Khuyến nghị trong báo cáo</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedReport.reportData.strategic_recommendations.slice(0, 5).map((rec: any, idx: number) => (
-                    <div key={idx} style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '13px' }}>{rec.title}</strong>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#dc2626' }}>{rec.priority}</span>
+            {/* 3. Strategic Recommendations (Fixed: No empty boxes!) */}
+            <div style={{ marginTop: '18px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Target size={16} className="text-primary" />
+                <span>Khuyến nghị chiến lược trong báo cáo ({selectedReportRecommendations.length})</span>
+              </h4>
+
+              {selectedReportRecommendations.length === 0 ? (
+                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Không có khuyến nghị cụ thể trong báo cáo này.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {selectedReportRecommendations.map((rec) => (
+                    <div
+                      key={rec.id}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderLeft: '4px solid #10B981',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: '13px', color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <CheckCircle size={14} />
+                          <span>{rec.title}</span>
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: '#ECFDF5',
+                            color: '#047857',
+                          }}
+                        >
+                          {rec.priority}
+                        </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>{rec.description}</p>
+                      <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: 'var(--text-main)' }}>
+                        {rec.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Key Findings (Phát hiện trọng tâm) */}
+            {selectedReport.reportData?.key_findings && selectedReport.reportData.key_findings.length > 0 && (
+              <div style={{ marginTop: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={16} style={{ color: '#D97706' }} />
+                  <span>Những phát hiện trọng tâm từ AI (Key Findings)</span>
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedReport.reportData.key_findings.map((finding: string, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        backgroundColor: '#FFFBEB',
+                        border: '1px solid #FDE68A',
+                        fontSize: '12.5px',
+                        lineHeight: '1.55',
+                        color: '#92400E',
+                      }}
+                    >
+                      <strong>#{idx + 1}:</strong> {finding}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            {/* 5. Opportunities (Cơ hội thị trường) */}
+            {selectedReport.reportData?.opportunities && selectedReport.reportData.opportunities.length > 0 && (
+              <div style={{ marginTop: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Lightbulb size={16} style={{ color: '#059669' }} />
+                  <span>Cơ hội thị trường được phát hiện</span>
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {selectedReport.reportData.opportunities.slice(0, 4).map((opp: string, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        fontSize: '12.5px',
+                        color: '#166534',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      • {opp}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 6. Risks (Rủi ro cảnh báo) */}
+            {selectedReport.reportData?.risks && selectedReport.reportData.risks.length > 0 && (
+              <div style={{ marginTop: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={16} style={{ color: '#DC2626' }} />
+                  <span>Cảnh báo rủi ro liên quan</span>
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {selectedReport.reportData.risks.map((risk: string, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        fontSize: '12.5px',
+                        color: '#991B1B',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      ⚠️ {risk}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
               <button
                 type="button"
                 className="btn btn-secondary"

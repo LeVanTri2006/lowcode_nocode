@@ -3,12 +3,17 @@
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 24px;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header-main {
   display: flex;
   flex-direction: column;
+  min-width: 260px;
+  flex: 1 1 320px;
 }
 
 .page-header-title {
@@ -31,7 +36,9 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .page-header-actions {
@@ -40,13 +47,14 @@
   gap: 10px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .page-header-container {
     flex-direction: column;
     align-items: stretch;
   }
   .page-header-right {
-    justify-content: flex-start;
-    align-items: stretch;
+    align-items: flex-start;
+    width: 100%;
   }
 }
+

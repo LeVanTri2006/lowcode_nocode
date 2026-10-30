@@ -70,15 +70,61 @@ router.delete('/:id', async (req, res, next) => {
       where: { id }
     });
 
+    const remainingCompetitors = await prisma.competitor.count();
+    let downstreamCleared = false;
+
+    // If no competitors remain or cascadeAll query is requested, clear all downstream derived workflow data (WF06-WF10)
+    if (remainingCompetitors === 0 || req.query.cascadeAll === 'true') {
+      await prisma.$transaction([
+        prisma.trend.deleteMany(),
+        prisma.opportunity.deleteMany(),
+        prisma.risk.deleteMany(),
+        prisma.strategy.deleteMany(),
+        prisma.report.deleteMany(),
+      ]);
+      downstreamCleared = true;
+    }
+
     res.json({
       success: true,
-      message: 'Competitor and all associated data deleted successfully',
-      data: deleted
+      message: downstreamCleared
+        ? 'Competitor deleted and all downstream workflow analysis data (WF06-WF10) cleared'
+        : 'Competitor and associated data deleted successfully',
+      data: deleted,
+      remainingCompetitors,
+      downstreamCleared,
     });
   } catch (error: any) {
     if (error?.code === 'P2025') {
       return res.status(404).json({ success: false, message: 'Competitor not found' });
     }
+    next(error);
+  }
+});
+
+// Explicit endpoint to purge all derived workflow analysis data (WF06 to WF10)
+router.post('/clean-downstream', async (_req, res, next) => {
+  try {
+    const [trends, opportunities, risks, strategies, reports] = await prisma.$transaction([
+      prisma.trend.deleteMany(),
+      prisma.opportunity.deleteMany(),
+      prisma.risk.deleteMany(),
+      prisma.strategy.deleteMany(),
+      prisma.report.deleteMany(),
+    ]);
+
+    res.json({
+      success: true,
+      message: 'All downstream workflow analysis data (WF06 to WF10) cleared successfully',
+      cleared: {
+        trends: trends.count,
+        opportunities: opportunities.count,
+        risks: risks.count,
+        strategies: strategies.count,
+        reports: reports.count,
+      },
+    });
+  } catch (error) {
     next(error);
   }
 });

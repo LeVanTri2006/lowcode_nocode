@@ -131,54 +131,294 @@ export const WF02Page: React.FC = () => {
         <div className="ui-card kpi-card-clean"><div className="kpi-icon-wrap orange"><ShieldAlert size={22} /></div><div className="kpi-details"><span className="kpi-label">Lần ghi nhận chỉ số</span><span className="kpi-number">{kpiValue(metricsResource.loading, metricsResource.error, metricsResource.data?.length ?? 0)}</span><span className="kpi-subtext neutral">{distinctPlatforms} nền tảng trong nội dung</span></div></div>
       </div>
 
-      <div className="wf02-main-layout">
-        <div className="wf02-left-col">
-          <div className="ui-card wf02-filter-card">
-            <div className="card-section-title"><Filter size={16} className="text-primary" /><span>Bộ lọc dữ liệu</span></div>
-            <div className="filter-group"><label className="filter-field-label" htmlFor="wf02-competitor">Đối thủ</label><select id="wf02-competitor" className="filter-select" value={competitorFilter} onChange={(event) => { setCompetitorFilter(event.target.value); setCurrentPage(1); }}><option value="all">Tất cả</option>{(competitorsResource.data ?? []).map((competitor) => <option value={competitor.id} key={competitor.id}>{competitor.name}</option>)}</select>{competitorsResource.error && <small className="wf02-inline-error">Tên đối thủ không tải được; đang hiển thị ID. <button type="button" onClick={competitorsResource.refresh}>Thử lại</button></small>}</div>
-            <div className="filter-group"><label className="filter-field-label" htmlFor="wf02-platform">Nền tảng</label><select id="wf02-platform" className="filter-select" value={platformFilter} onChange={(event) => { setPlatformFilter(event.target.value); setCurrentPage(1); }}><option value="all">Tất cả</option>{[...new Set(contents.map((item) => item.platform).filter(Boolean))].map((platform) => <option key={platform} value={platform.toLowerCase()}>{platformLabel(platform)}</option>)}</select></div>
-            <div className="filter-group"><label className="filter-field-label" htmlFor="wf02-metrics">Tình trạng chỉ số</label><select id="wf02-metrics" className="filter-select" value={metricsFilter} disabled={Boolean(metricsResource.error)} onChange={(event) => { setMetricsFilter(event.target.value); setCurrentPage(1); }}><option value="all">Tất cả</option><option value="has">Có lần ghi nhận</option><option value="none">Chưa có lần ghi nhận</option></select></div>
-            <div className="filter-group"><label className="filter-field-label" htmlFor="wf02-keyword">Từ khóa</label><input id="wf02-keyword" type="search" placeholder="Tìm tiêu đề hoặc video ID…" className="filter-text-input" value={keywordFilter} onChange={(event) => { setKeywordFilter(event.target.value); setCurrentPage(1); }} /></div>
-            <div className="filter-group"><label className="filter-field-label">Ngày đăng</label><div className="date-range-box"><input aria-label="Từ ngày đăng" type="date" className="date-input" value={startDate} onChange={(event) => { setStartDate(event.target.value); setCurrentPage(1); }} /><span className="date-sep">→</span><input aria-label="Đến ngày đăng" type="date" className="date-input" value={endDate} onChange={(event) => { setEndDate(event.target.value); setCurrentPage(1); }} /></div></div>
-            <div className="filter-actions-row"><button type="button" className="btn btn-primary btn-apply-filter" onClick={() => setCurrentPage(1)}>🔍 Lọc dữ liệu</button><button type="button" className="btn btn-secondary btn-reset-filter" onClick={resetFilters}><RotateCcw size={13} /> Đặt lại</button></div>
+      {/* Filter Card - Horizontal */}
+      <div className="ui-card wf02-filter-card-horizontal">
+        <div className="wf02-filter-header">
+          <div className="card-section-title">
+            <Filter size={16} className="text-primary" />
+            <span>Bộ lọc dữ liệu</span>
           </div>
-
-          <div className="ui-card wf02-bulk-card"><div className="card-section-title"><Layers size={16} className="text-primary" /><span>Thông tin dữ liệu</span></div><p className="wf02-data-note">máy chủ hiện không lưu trạng thái hợp lệ, trùng lặp hoặc không hợp lệ. Các thao tác đổi trạng thái và xóa hàng loạt chưa được hỗ trợ.</p><p className="wf02-data-note">Chỉ số hiển thị là lần ghi nhận mới nhất theo thời gian ghi nhận.</p></div>
+          {(competitorFilter !== 'all' || platformFilter !== 'all' || metricsFilter !== 'all' || keywordFilter || startDate || endDate) && (
+            <button type="button" className="wf02-filter-clear-badge" onClick={resetFilters}>
+              <RotateCcw size={12} /> Xóa bộ lọc đang áp dụng
+            </button>
+          )}
         </div>
 
-        <div className="ui-card wf02-right-col">
-          <div className="content-table-header"><div className="card-section-title"><Video size={18} className="text-primary" /><span>Danh sách nội dung</span></div><div className="wf02-table-actions"><button type="button" className="btn btn-outline export-btn" onClick={exportCsv}><Download size={14} /><span>Xuất dữ liệu</span></button><button type="button" className="btn btn-secondary" onClick={refreshAll} disabled={contentsResource.loading || metricsResource.loading}><RotateCcw size={14} /> Làm mới</button></div></div>
+        <div className="wf02-filter-horizontal-form">
+          <div className="filter-group">
+            <label className="filter-field-label" htmlFor="wf02-competitor">Đối thủ</label>
+            <select
+              id="wf02-competitor"
+              className="filter-select"
+              value={competitorFilter}
+              onChange={(event) => { setCompetitorFilter(event.target.value); setCurrentPage(1); }}
+            >
+              <option value="all">Tất cả đối thủ</option>
+              {(competitorsResource.data ?? []).map((competitor) => (
+                <option value={competitor.id} key={competitor.id}>{competitor.name}</option>
+              ))}
+            </select>
+            {competitorsResource.error && (
+              <small className="wf02-inline-error">
+                Lỗi tải đối thủ. <button type="button" onClick={competitorsResource.refresh}>Thử lại</button>
+              </small>
+            )}
+          </div>
 
-          {contentsResource.loading && contentsResource.data === null && <div className="wf02-state" role="status"><Loader2 size={18} className="spin-icon" /> Đang tải nội dung từ máy chủ…</div>}
-          {contentsResource.error && <div className="wf02-error" role="alert"><span>{contentsResource.error}</span><button className="btn btn-secondary" type="button" onClick={contentsResource.refresh}>Thử tải lại nội dung</button></div>}
-          {metricsResource.error && <div className="wf02-error compact" role="alert"><span>Không tải được chỉ số: {metricsResource.error} Lượt tương tác sẽ hiện “—”.</span><button className="btn btn-secondary" type="button" onClick={metricsResource.refresh}>Thử lại</button></div>}
-          {competitorsResource.error && <div className="wf02-error compact" role="alert"><span>Không tải được tên đối thủ; đang dùng Mã nội bộ.</span><button className="btn btn-secondary" type="button" onClick={competitorsResource.refresh}>Thử lại</button></div>}
+          <div className="filter-group">
+            <label className="filter-field-label" htmlFor="wf02-platform">Nền tảng</label>
+            <select
+              id="wf02-platform"
+              className="filter-select"
+              value={platformFilter}
+              onChange={(event) => { setPlatformFilter(event.target.value); setCurrentPage(1); }}
+            >
+              <option value="all">Tất cả nền tảng</option>
+              {[...new Set(contents.map((item) => item.platform).filter(Boolean))].map((platform) => (
+                <option key={platform} value={platform.toLowerCase()}>{platformLabel(platform)}</option>
+              ))}
+            </select>
+          </div>
 
-          {contentsResource.data && contentsResource.data.length > 0 && <>
-            <div className="table-responsive-wrap"><table className="content-data-table"><thead><tr><th>Mã nội bộ</th><th>Nội dung</th><th>Nền tảng</th><th>Đối thủ</th><th>Ngày đăng</th><th>Lượt xem</th><th>Lượt thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Chỉ số gần nhất</th><th>Thao tác</th></tr></thead>
-              <tbody>{pageContents.map((content: SocialContent) => {
-                const metric = latestMetricByContent.get(content.id);
-                const title = typeof content.title === 'string' && content.title.trim() ? content.title : '(Không có tiêu đề)';
-                const competitorName = competitorNames.get(content.competitorId);
-                return <tr key={content.id}>
-                  <td className="text-muted-cell font-semibold">{content.id}</td>
-                  <td><div className="wf02-content-title"><span className="video-title-text" title={title}>{title}</span><small>Mã video: {content.contentId || '—'}</small></div></td>
-                  <td>{platformLabel(content.platform)}</td>
-                  <td>{competitorName ?? `Đối thủ #${content.competitorId}`}</td>
-                  <td className="text-muted-cell">{formatDate(content.publishedAt)}</td>
-                  <td className="font-semibold">{metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? 'Đang tải…' : metric ? formatMetric(metric.views) : 'Chưa có dữ liệu chỉ số'}</td>
-                  <td>{metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.likes) : '—'}</td>
-                  <td>{metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.comments) : '—'}</td>
-                  <td>{metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.shares) : '—'}</td>
-                  <td className="text-muted-cell">{metricsResource.error ? 'Lỗi tải' : metricsResource.loading && metricsResource.data === null ? 'Đang tải…' : metric ? formatDate(metric.capturedAt) : 'Chưa có lần ghi nhận'}</td>
-                  <td><div className="table-actions-cell">{isHttpUrl(content.url) ? <a className="action-icon-btn view" title="Mở nội dung" href={content.url} target="_blank" rel="noreferrer"><Eye size={14} /></a> : <button className="action-icon-btn view" type="button" title="máy chủ không cung cấp Đường dẫn hợp lệ" disabled><Eye size={14} /></button>}<button className="action-icon-btn edit" type="button" title="máy chủ chưa hỗ trợ sửa nội dung" disabled><Edit2 size={14} /></button><button className="action-icon-btn more" type="button" title="máy chủ chưa hỗ trợ thao tác này" disabled><MoreVertical size={14} /></button></div></td>
-                </tr>;
-              })}</tbody>
-            </table></div>
-            <div className="table-pagination-footer"><span className="pagination-info">{filteredContents.length ? `Hiển thị ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredContents.length)} trong ${filteredContents.length} nội dung` : 'Không có kết quả'}</span><div className="pagination-nav"><button type="button" className="page-nav-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>‹</button><span className="pagination-info">Trang {currentPage} / {pageCount}</span><button type="button" className="page-nav-btn" disabled={currentPage >= pageCount} onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}>›</button></div></div>
-          </>}
-          {!contentsResource.loading && !contentsResource.error && contentsResource.data?.length === 0 && <div className="wf02-state">Chưa có nội dung.</div>}
-          {!contentsResource.loading && !contentsResource.error && contentsResource.data && contentsResource.data.length > 0 && filteredContents.length === 0 && <div className="wf02-state">Không có nội dung phù hợp với bộ lọc.</div>}
+          <div className="filter-group">
+            <label className="filter-field-label" htmlFor="wf02-metrics">Tình trạng chỉ số</label>
+            <select
+              id="wf02-metrics"
+              className="filter-select"
+              value={metricsFilter}
+              disabled={Boolean(metricsResource.error)}
+              onChange={(event) => { setMetricsFilter(event.target.value); setCurrentPage(1); }}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="has">Có lần ghi nhận</option>
+              <option value="none">Chưa có lần ghi nhận</option>
+            </select>
+          </div>
+
+          <div className="filter-group filter-group-keyword">
+            <label className="filter-field-label" htmlFor="wf02-keyword">Từ khóa</label>
+            <input
+              id="wf02-keyword"
+              type="search"
+              placeholder="Tìm tiêu đề hoặc video ID…"
+              className="filter-text-input"
+              value={keywordFilter}
+              onChange={(event) => { setKeywordFilter(event.target.value); setCurrentPage(1); }}
+            />
+          </div>
+
+          <div className="filter-group filter-group-date">
+            <label className="filter-field-label">Ngày đăng</label>
+            <div className="date-range-box">
+              <input
+                aria-label="Từ ngày đăng"
+                type="date"
+                className="date-input"
+                value={startDate}
+                onChange={(event) => { setStartDate(event.target.value); setCurrentPage(1); }}
+              />
+              <span className="date-sep">→</span>
+              <input
+                aria-label="Đến ngày đăng"
+                type="date"
+                className="date-input"
+                value={endDate}
+                onChange={(event) => { setEndDate(event.target.value); setCurrentPage(1); }}
+              />
+            </div>
+          </div>
+
+          <div className="filter-group filter-group-actions">
+            <span className="filter-field-label filter-field-label-placeholder" aria-hidden="true">&nbsp;</span>
+            <div className="filter-actions-row">
+              <button
+                type="button"
+                className="btn btn-primary btn-apply-filter"
+                onClick={() => setCurrentPage(1)}
+              >
+                🔍 Lọc dữ liệu
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-reset-filter"
+                onClick={resetFilters}
+              >
+                <RotateCcw size={13} /> Đặt lại
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content List Card - Full Width Centered */}
+      <div className="ui-card wf02-content-card">
+        <div className="content-table-header">
+          <div className="card-section-title">
+            <Video size={18} className="text-primary" />
+            <span>Danh sách nội dung</span>
+          </div>
+          <div className="wf02-table-actions">
+            <button type="button" className="btn btn-outline export-btn" onClick={exportCsv}>
+              <Download size={14} />
+              <span>Xuất dữ liệu</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={refreshAll}
+              disabled={contentsResource.loading || metricsResource.loading}
+            >
+              <RotateCcw size={14} /> Làm mới
+            </button>
+          </div>
+        </div>
+
+        {contentsResource.loading && contentsResource.data === null && (
+          <div className="wf02-state" role="status">
+            <Loader2 size={18} className="spin-icon" /> Đang tải nội dung từ máy chủ…
+          </div>
+        )}
+        {contentsResource.error && (
+          <div className="wf02-error" role="alert">
+            <span>{contentsResource.error}</span>
+            <button className="btn btn-secondary" type="button" onClick={contentsResource.refresh}>
+              Thử tải lại nội dung
+            </button>
+          </div>
+        )}
+        {metricsResource.error && (
+          <div className="wf02-error compact" role="alert">
+            <span>Không tải được chỉ số: {metricsResource.error} Lượt tương tác sẽ hiện “—”.</span>
+            <button className="btn btn-secondary" type="button" onClick={metricsResource.refresh}>Thử lại</button>
+          </div>
+        )}
+        {competitorsResource.error && (
+          <div className="wf02-error compact" role="alert">
+            <span>Không tải được tên đối thủ; đang dùng Mã nội bộ.</span>
+            <button className="btn btn-secondary" type="button" onClick={competitorsResource.refresh}>Thử lại</button>
+          </div>
+        )}
+
+        {contentsResource.data && contentsResource.data.length > 0 && (
+          <>
+            <div className="table-responsive-wrap">
+              <table className="content-data-table">
+                <thead>
+                  <tr>
+                    <th>Mã nội bộ</th>
+                    <th>Nội dung</th>
+                    <th>Nền tảng</th>
+                    <th>Đối thủ</th>
+                    <th>Ngày đăng</th>
+                    <th>Lượt xem</th>
+                    <th>Lượt thích</th>
+                    <th>Bình luận</th>
+                    <th>Chia sẻ</th>
+                    <th>Chỉ số gần nhất</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageContents.map((content: SocialContent) => {
+                    const metric = latestMetricByContent.get(content.id);
+                    const title = typeof content.title === 'string' && content.title.trim() ? content.title : '(Không có tiêu đề)';
+                    const competitorName = competitorNames.get(content.competitorId);
+                    return (
+                      <tr key={content.id}>
+                        <td className="text-muted-cell font-semibold">{content.id}</td>
+                        <td>
+                          <div className="wf02-content-title">
+                            <span className="video-title-text" title={title}>{title}</span>
+                            <small>Mã video: {content.contentId || '—'}</small>
+                          </div>
+                        </td>
+                        <td>{platformLabel(content.platform)}</td>
+                        <td>{competitorName ?? `Đối thủ #${content.competitorId}`}</td>
+                        <td className="text-muted-cell">{formatDate(content.publishedAt)}</td>
+                        <td className="font-semibold">
+                          {metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? 'Đang tải…' : metric ? formatMetric(metric.views) : 'Chưa có dữ liệu chỉ số'}
+                        </td>
+                        <td>
+                          {metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.likes) : '—'}
+                        </td>
+                        <td>
+                          {metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.comments) : '—'}
+                        </td>
+                        <td>
+                          {metricsResource.error ? '—' : metricsResource.loading && metricsResource.data === null ? '…' : metric ? formatMetric(metric.shares) : '—'}
+                        </td>
+                        <td className="text-muted-cell">
+                          {metricsResource.error ? 'Lỗi tải' : metricsResource.loading && metricsResource.data === null ? 'Đang tải…' : metric ? formatDate(metric.capturedAt) : 'Chưa có lần ghi nhận'}
+                        </td>
+                        <td>
+                          <div className="table-actions-cell">
+                            {isHttpUrl(content.url) ? (
+                              <a className="action-icon-btn view" title="Mở nội dung" href={content.url} target="_blank" rel="noreferrer">
+                                <Eye size={14} />
+                              </a>
+                            ) : (
+                              <button className="action-icon-btn view" type="button" title="máy chủ không cung cấp Đường dẫn hợp lệ" disabled>
+                                <Eye size={14} />
+                              </button>
+                            )}
+                            <button className="action-icon-btn edit" type="button" title="máy chủ chưa hỗ trợ sửa nội dung" disabled>
+                              <Edit2 size={14} />
+                            </button>
+                            <button className="action-icon-btn more" type="button" title="máy chủ chưa hỗ trợ thao tác này" disabled>
+                              <MoreVertical size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-pagination-footer">
+              <span className="pagination-info">
+                {filteredContents.length
+                  ? `Hiển thị ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredContents.length)} trong ${filteredContents.length} nội dung`
+                  : 'Không có kết quả'}
+              </span>
+              <div className="pagination-nav">
+                <button
+                  type="button"
+                  className="page-nav-btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  ‹
+                </button>
+                <span className="pagination-info">Trang {currentPage} / {pageCount}</span>
+                <button
+                  type="button"
+                  className="page-nav-btn"
+                  disabled={currentPage >= pageCount}
+                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!contentsResource.loading && !contentsResource.error && contentsResource.data?.length === 0 && (
+          <div className="wf02-state">Chưa có nội dung.</div>
+        )}
+        {!contentsResource.loading && !contentsResource.error && contentsResource.data && contentsResource.data.length > 0 && filteredContents.length === 0 && (
+          <div className="wf02-state">Không có nội dung phù hợp với bộ lọc.</div>
+        )}
+      </div>
+
+      {/* Subtle bottom info note */}
+      <div className="ui-card wf02-info-banner">
+        <Layers size={16} className="text-primary flex-shrink-0" />
+        <div className="wf02-info-banner-text">
+          <span><strong>Thông tin dữ liệu:</strong> Chỉ số hiển thị là lần ghi nhận mới nhất theo thời gian. Máy chủ hiện chưa lưu trạng thái làm sạch (hợp lệ / trùng lặp), thao tác đổi trạng thái hàng loạt chưa được hỗ trợ.</span>
         </div>
       </div>
     </div>

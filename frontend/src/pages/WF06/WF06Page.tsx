@@ -11,6 +11,7 @@ import {
   RotateCw,
   Loader2,
   AlertCircle,
+  Zap,
 } from 'lucide-react';
 import { getTrends } from '../../services/api/trendsApi';
 import { getPerformanceData } from '../../services/api/socialContentsApi';
@@ -76,6 +77,35 @@ export const WF06Page: React.FC = () => {
     [validTrends]
   );
 
+  // Computed Donut Chart Slices
+  const donutSlices = useMemo(() => {
+    const top = fastGrowthTopics.slice(0, 5);
+    if (top.length === 0) return [];
+    const totalGrowth = top.reduce(
+      (sum, t) => sum + Math.max(1, Number(t.growthRate || t.score || 10)),
+      0
+    );
+    const colors = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+    const circumference = 314.159; // 2 * PI * 50
+    let accumulatedOffset = 0;
+
+    return top.map((topic, i) => {
+      const val = Math.max(1, Number(topic.growthRate || topic.score || 10));
+      const percentage = Math.max(5, Math.round((val / totalGrowth) * 100));
+      const strokeLength = (percentage / 100) * circumference;
+      const strokeOffset = -accumulatedOffset;
+      accumulatedOffset += strokeLength;
+
+      return {
+        ...topic,
+        color: colors[i % colors.length],
+        percentage,
+        strokeDasharray: `${strokeLength} ${circumference - strokeLength}`,
+        strokeDashoffset: strokeOffset,
+      };
+    });
+  }, [fastGrowthTopics]);
+
   const keywordCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -103,7 +133,7 @@ export const WF06Page: React.FC = () => {
 
   const wordCloudTags = keywordCounts.slice(0, 13).map((item, i) => ({
     text: item.keyword,
-    size: Math.max(12, 30 - i * 1.5),
+    size: Math.max(12, 28 - i * 1.4),
     color: ['#2563EB', '#EF4444', '#10B981', '#EA580C', '#3B82F6', '#6366F1'][i % 6],
     weight: i < 3 ? 800 : 600,
   }));
@@ -112,20 +142,27 @@ export const WF06Page: React.FC = () => {
     {
       name: 'YouTube',
       pct: videos.length
-        ? Math.round((videos.filter((v) => (v.platform || '').toLowerCase() === 'youtube').length / videos.length) * 100)
+        ? Math.round(
+            (videos.filter((v) => (v.platform || '').toLowerCase() === 'youtube').length /
+              videos.length) *
+              100
+          )
         : 100,
       color: '#2563EB',
     },
     {
       name: 'TikTok',
       pct: videos.length
-        ? Math.round((videos.filter((v) => (v.platform || '').toLowerCase() === 'tiktok').length / videos.length) * 100)
+        ? Math.round(
+            (videos.filter((v) => (v.platform || '').toLowerCase() === 'tiktok').length /
+              videos.length) *
+              100
+          )
         : 0,
       color: '#10B981',
     },
   ];
 
-  const totalVideos = platformVideos.length || videos.length;
   const totalTrends = validTrends.length;
   const totalFastGrowth = fastGrowthTopics.length;
   const potentialTopics = validTrends.filter((t) => Number(t.score) >= 50).length;
@@ -133,38 +170,57 @@ export const WF06Page: React.FC = () => {
 
   return (
     <div className="wf06-page-container fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-        <PageHeader
-          title="WF06 - Xu hướng thị trường"
-          subtitle="Phân tích xu hướng chủ đề, từ khóa và nội dung thịnh hành trong thị trường từ cơ sở dữ liệu."
-          stepNumber={6}
-        />
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => fetchData()}
-          disabled={loading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8 }}
-        >
-          {loading ? <Loader2 size={14} className="spin" /> : <RotateCw size={14} />}
-          <span>{loading ? 'Đang tải...' : 'Làm mới dữ liệu'}</span>
-        </button>
-      </div>
+      <PageHeader
+        title="WF06 - Xu hướng thị trường"
+        subtitle="Phân tích xu hướng chủ đề, từ khóa và nội dung thịnh hành trong thị trường từ cơ sở dữ liệu."
+        stepNumber={6}
+        actions={
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => fetchData()}
+            disabled={loading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            {loading ? <Loader2 size={14} className="spin" /> : <RotateCw size={14} />}
+            <span>{loading ? 'Đang tải...' : 'Làm mới dữ liệu'}</span>
+          </button>
+        }
+      />
 
       {loading && (
-        <div role="status" className="ui-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16 }}>
+        <div role="status" className="ui-card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 14 }}>
           <Loader2 size={18} className="spin text-primary" />
           <span>Đang tải dữ liệu xu hướng từ máy chủ…</span>
         </div>
       )}
 
       {error && (
-        <div role="alert" className="ui-card" style={{ padding: 16, backgroundColor: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#991b1b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div
+          role="alert"
+          className="ui-card"
+          style={{
+            padding: 14,
+            backgroundColor: '#fef2f2',
+            borderLeft: '4px solid #ef4444',
+            color: '#991b1b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertCircle size={18} />
             <span>Không tải được dữ liệu: {error}</span>
           </div>
-          <button type="button" className="btn btn-secondary" onClick={() => fetchData()} style={{ padding: '4px 10px', fontSize: 12 }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => fetchData()}
+            style={{ padding: '4px 10px', fontSize: 12 }}
+          >
             Thử lại
           </button>
         </div>
@@ -224,31 +280,29 @@ export const WF06Page: React.FC = () => {
           <div className="analytics-card-header">
             <div className="card-section-title">
               <TrendingUp size={16} className="text-primary" />
-              <span>Xu hướng chủ đề theo thời gian</span>
+              <span>Xu hướng theo thời gian</span>
             </div>
-            <div className="chart-legend-row-sm">Theo thời điểm phát hiện</div>
+            <div className="chart-legend-row-sm">Gần nhất</div>
           </div>
 
-          <div className="chart-svg-wrap">
-            {loading ? (
-              <div className="chart-empty-state">Đang tải dữ liệu…</div>
-            ) : validTrends.length === 0 ? (
-              <div className="chart-empty-state">Chưa có xu hướng được ghi nhận.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0', maxHeight: 220, overflowY: 'auto' }}>
-                {validTrends.slice(0, 5).map((t) => (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '6px 10px', background: '#f8fafc', borderRadius: 6 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.name}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {t.detectedAt ? new Date(t.detectedAt).toLocaleDateString('vi-VN') : '—'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {loading ? (
+            <div className="chart-empty-state">Đang tải dữ liệu…</div>
+          ) : validTrends.length === 0 ? (
+            <div className="chart-empty-state">Chưa có xu hướng được ghi nhận.</div>
+          ) : (
+            <div className="trend-timeline-list">
+              {validTrends.slice(0, 6).map((t) => (
+                <div key={t.id} className="trend-timeline-item">
+                  <span className="trend-timeline-title" title={t.name}>
+                    {t.name}
+                  </span>
+                  <span className="trend-timeline-date">
+                    {t.detectedAt ? new Date(t.detectedAt).toLocaleDateString('vi-VN') : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Card 2: Tỷ lệ chủ đề trong thị trường (Donut) */}
@@ -260,27 +314,48 @@ export const WF06Page: React.FC = () => {
 
           <div className="donut-content-row">
             <div className="donut-svg-wrap">
+              <svg viewBox="0 0 140 140" className="donut-svg">
+                {donutSlices.length === 0 ? (
+                  <circle cx="70" cy="70" r="50" fill="none" stroke="#E2E8F0" strokeWidth="18" />
+                ) : (
+                  donutSlices.map((slice) => (
+                    <circle
+                      key={slice.id}
+                      cx="70"
+                      cy="70"
+                      r="50"
+                      fill="none"
+                      stroke={slice.color}
+                      strokeWidth="18"
+                      strokeDasharray={slice.strokeDasharray}
+                      strokeDashoffset={slice.strokeDashoffset}
+                    />
+                  ))
+                )}
+              </svg>
               <div className="donut-center-label">
-                <span className="donut-center-number">{loading ? '…' : fmt(totalVideos)}</span>
-                <span className="donut-center-sub">Tổng video</span>
+                <span className="donut-center-number">{loading ? '…' : fmt(totalTrends)}</span>
+                <span className="donut-center-sub">Chủ đề</span>
               </div>
             </div>
 
             <div className="donut-legend-stack">
-              {fastGrowthTopics.slice(0, 5).map((topic) => (
+              {donutSlices.map((topic) => (
                 <div key={topic.id} className="donut-legend-item">
-                  <span className="legend-dot" style={{ backgroundColor: '#2563EB' }} />
+                  <span className="legend-dot" style={{ backgroundColor: topic.color }} />
                   <div className="legend-meta">
-                    <span className="legend-name">{topic.name}</span>
-                    <span className="legend-val">{topic.growthRate}%</span>
+                    <span className="legend-name" title={topic.name}>
+                      {topic.name}
+                    </span>
+                    <span className="legend-val">{topic.percentage}%</span>
                   </div>
                 </div>
               ))}
-              {!loading && fastGrowthTopics.length === 0 && (
+              {!loading && donutSlices.length === 0 && (
                 <div className="donut-legend-item">
                   <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }} />
                   <div className="legend-meta">
-                    <span className="legend-name">Đang cập nhật...</span>
+                    <span className="legend-name">Chưa có chủ đề nổi bật</span>
                     <span className="legend-val">—</span>
                   </div>
                 </div>
@@ -292,22 +367,33 @@ export const WF06Page: React.FC = () => {
         {/* Card 3: Chủ đề tăng trưởng nhanh nhất */}
         <div className="ui-card wf06-fast-growth-card">
           <div className="card-section-title">
-            <TrendingUp size={16} className="text-success" />
+            <Zap size={16} className="text-success" />
             <span>Chủ đề tăng trưởng nhanh nhất</span>
           </div>
 
           <div className="fast-growth-list">
-            {fastGrowthTopics.slice(0, 6).map((t) => (
+            {fastGrowthTopics.slice(0, 6).map((t, idx) => (
               <div key={t.id} className="fast-topic-item">
-                <div className="topic-thumb" style={{ background: '#2563EB' }} />
-                <span className="topic-name">{t.name}</span>
+                <div
+                  className="topic-thumb"
+                  style={{
+                    background: ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'][
+                      idx % 6
+                    ],
+                  }}
+                >
+                  #{idx + 1}
+                </div>
+                <span className="topic-name" title={t.name}>
+                  {t.name}
+                </span>
                 <span className="topic-growth-pill">
                   {t.growthRate > 0 ? `↗ +${t.growthRate}%` : `↔ ${t.growthRate}%`}
                 </span>
               </div>
             ))}
             {!loading && fastGrowthTopics.length === 0 && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 12 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, padding: 12 }}>
                 Chưa có chủ đề nào thuộc diện tăng trưởng nhanh.
               </p>
             )}
@@ -324,38 +410,40 @@ export const WF06Page: React.FC = () => {
             <span>Từ khóa xu hướng</span>
           </div>
 
-          <table className="kw-table">
-            <thead>
-              <tr>
-                <th style={{ width: '28px' }}>#</th>
-                <th>Từ khóa</th>
-                <th>Số lần xuất hiện</th>
-                <th>Tăng trưởng</th>
-                <th>Độ phổ biến</th>
-              </tr>
-            </thead>
-            <tbody>
-              {keywordCounts.length === 0 ? (
+          <div className="table-responsive-wrap">
+            <table className="kw-table">
+              <thead>
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: 20 }}>
-                    {loading ? 'Đang phân tích từ khóa…' : 'Chưa có từ khóa xu hướng.'}
-                  </td>
+                  <th style={{ width: '32px' }}>#</th>
+                  <th>Từ khóa</th>
+                  <th>Số video</th>
+                  <th>Tăng trưởng</th>
+                  <th>Trạng thái</th>
                 </tr>
-              ) : (
-                keywordCounts.map((k) => (
-                  <tr key={k.id}>
-                    <td className="text-muted-cell font-semibold">{k.id}</td>
-                    <td className="kw-name">{k.keyword}</td>
-                    <td className="font-semibold">{k.videoCount}</td>
-                    <td className="growth-text">↗ Cao</td>
-                    <td>
-                      <span className="badge-pop">Thịnh hành</span>
+              </thead>
+              <tbody>
+                {keywordCounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 20 }}>
+                      {loading ? 'Đang phân tích từ khóa…' : 'Chưa có từ khóa xu hướng.'}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  keywordCounts.map((k) => (
+                    <tr key={k.id}>
+                      <td className="text-muted-cell font-semibold">{k.id}</td>
+                      <td className="kw-name">{k.keyword}</td>
+                      <td className="font-semibold">{k.videoCount}</td>
+                      <td className="growth-text">↗ Cao</td>
+                      <td>
+                        <span className="badge-pop">Thịnh hành</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Card 2: Word Cloud & Insight */}
@@ -367,7 +455,9 @@ export const WF06Page: React.FC = () => {
 
           <div className="word-cloud-canvas">
             {wordCloudTags.length === 0 ? (
-              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chưa có từ khóa để tạo Word Cloud</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                Chưa có từ khóa để tạo Word Cloud
+              </span>
             ) : (
               wordCloudTags.map((tag, idx) => (
                 <span
@@ -387,8 +477,8 @@ export const WF06Page: React.FC = () => {
 
           <div className="insight-bullets-box">
             <div className="insight-bullets-title">
-              <Lightbulb size={14} className="text-primary" />
-              <span>Nhận định xu hướng</span>
+              <Lightbulb size={13} className="text-primary" />
+              <span>Nhận định xu hướng AI</span>
             </div>
             <ul className="insight-bullets-list">
               {validTrends.slice(0, 3).map((t) => (
@@ -408,7 +498,7 @@ export const WF06Page: React.FC = () => {
           <div className="analytics-card-header">
             <div className="card-section-title">
               <BarChart2 size={16} className="text-primary" />
-              <span>Xu hướng theo nền tảng</span>
+              <span>Theo nền tảng</span>
             </div>
             <select
               value={platform}
