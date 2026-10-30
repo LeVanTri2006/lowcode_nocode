@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertCircle,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { getOpportunities } from '../../services/api/opportunitiesApi';
 import type { OpportunityItem } from '../../types/api';
@@ -27,6 +28,69 @@ const YoutubeIcon: React.FC<{ size?: number; className?: string }> = ({ size = 1
   </svg>
 );
 
+const FIELD_LABELS: Record<string, string> = {
+  rank: 'Thứ hạng cơ hội',
+  description: 'Mô tả phân tích dữ liệu',
+  potential_score: 'Điểm tiềm năng',
+  recommended_action: 'Hành động đề xuất triển khai',
+  growth_rate: 'Tốc độ tăng trưởng',
+  views: 'Lượt xem trung bình',
+  likes: 'Lượt thích',
+  comments: 'Bình luận',
+  shares: 'Lượt chia sẻ',
+  topic: 'Chủ đề',
+  competitor: 'Đối thủ cạnh tranh',
+  competitor_name: 'Tên đối thủ',
+  platform: 'Nền tảng',
+  target_audience: 'Khán giả mục tiêu',
+  content_format: 'Định dạng nội dung gợi ý',
+  content_type: 'Loại nội dung',
+  difficulty: 'Độ khó thực hiện',
+  impact: 'Mức độ tác động',
+  source: 'Nguồn dữ liệu',
+  created_at: 'Thời điểm ghi nhận',
+  createdAt: 'Thời điểm ghi nhận',
+  url: 'Đường dẫn liên quan',
+  video_id: 'Mã video tham chiếu',
+  content_id: 'Mã nội dung',
+  tags: 'Từ khóa liên quan',
+  keyword: 'Từ khóa',
+  keywords: 'Từ khóa liên quan',
+};
+
+const formatFieldKey = (key: string): string => {
+  const normalized = key.trim().toLowerCase();
+  if (FIELD_LABELS[normalized]) return FIELD_LABELS[normalized];
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatPriority = (priority: string | undefined | null): string => {
+  if (!priority) return 'Không xác định';
+  const p = priority.toLowerCase().trim();
+  if (p === 'high' || p === 'cao') return 'Cao';
+  if (p === 'medium' || p.includes('trung') || p === 'med') return 'Trung bình';
+  if (p === 'low' || p === 'thấp') return 'Thấp';
+  return priority;
+};
+
+const getPriorityClass = (priority: string | undefined | null): string => {
+  const p = (priority || '').toLowerCase().trim();
+  if (p === 'high' || p === 'cao') return 'cao';
+  if (p === 'medium' || p.includes('trung') || p === 'med') return 'trung-bình';
+  return 'thấp';
+};
+
+const formatDate = (value: string | null | undefined): string => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(date);
+};
+
 export const WF07Page: React.FC = () => {
   const { showToast } = useToast();
   const [opportunities, setOpportunities] = useState<OpportunityItem[]>([]);
@@ -35,7 +99,8 @@ export const WF07Page: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [selectedOppId, setSelectedOppId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'ai' | 'evidence' | 'reason'>('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'evidence'>('ai');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchData = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -65,10 +130,12 @@ export const WF07Page: React.FC = () => {
       const matchSearch =
         item.title.toLowerCase().includes(searchText.toLowerCase()) ||
         item.reason.toLowerCase().includes(searchText.toLowerCase());
+      const p = item.priority.toLowerCase();
       const matchPriority =
         priorityFilter === 'ALL' ||
-        item.priority.toLowerCase() === priorityFilter.toLowerCase() ||
-        (priorityFilter === 'HIGH' && (item.priority.toLowerCase() === 'cao' || item.priority === 'HIGH'));
+        (priorityFilter === 'HIGH' && (p.includes('high') || p.includes('cao'))) ||
+        (priorityFilter === 'MEDIUM' && (p.includes('med') || p.includes('trung'))) ||
+        (priorityFilter === 'LOW' && (p.includes('low') || p.includes('thap') || p.includes('thấp')));
       return matchSearch && matchPriority;
     });
   }, [opportunities, searchText, priorityFilter]);
@@ -109,13 +176,105 @@ export const WF07Page: React.FC = () => {
     showToast(`Đã sao chép: "${text}"`, 'success');
   };
 
-  const getEvidenceList = (evidence: any): string[] => {
-    if (!evidence) return [];
-    if (Array.isArray(evidence)) return evidence.map(String);
-    if (typeof evidence === 'object') {
-      return Object.entries(evidence).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`);
+  const handleOpenModalFor = (oppId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedOppId(oppId);
+    setIsModalOpen(true);
+  };
+
+  const renderEvidenceContent = (evidence: any) => {
+    if (!evidence) {
+      return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chưa có dữ liệu bằng chứng kèm theo.</p>;
     }
-    return [String(evidence)];
+
+    let parsedEvidence = evidence;
+    if (typeof evidence === 'string') {
+      try {
+        parsedEvidence = JSON.parse(evidence);
+      } catch {
+        return <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-main)' }}>{evidence}</p>;
+      }
+    }
+
+    if (typeof parsedEvidence === 'object' && parsedEvidence !== null && !Array.isArray(parsedEvidence)) {
+      const obj = parsedEvidence as Record<string, any>;
+      const entries = Object.entries(obj);
+      if (entries.length === 0) {
+        return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chưa có dữ liệu bằng chứng kèm theo.</p>;
+      }
+
+      return (
+        <div className="wf07-evidence-container">
+          {/* Quick metrics pills */}
+          {(obj.rank !== undefined || obj.potential_score !== undefined) && (
+            <div className="wf07-evidence-metric-pills">
+              {obj.rank !== undefined && (
+                <div className="wf07-ev-pill blue">
+                  <span className="ev-pill-label">Xếp hạng:</span>
+                  <span className="ev-pill-value">#{obj.rank}</span>
+                </div>
+              )}
+              {obj.potential_score !== undefined && (
+                <div className="wf07-ev-pill green">
+                  <span className="ev-pill-label">Điểm tiềm năng:</span>
+                  <span className="ev-pill-value">{obj.potential_score}/100</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Description: Chỉ hiển thị nếu khác với lý do phân tích chính để tránh trùng lặp nội dung */}
+          {obj.description && (!selectedOpp?.reason || obj.description.trim() !== selectedOpp.reason.trim()) && (
+            <div className="wf07-ev-card desc-card">
+              <div className="wf07-ev-card-title">
+                <ShieldCheck size={14} className="text-primary" />
+                <span>Mô tả phân tích dữ liệu</span>
+              </div>
+              <p className="wf07-ev-card-text">{String(obj.description)}</p>
+            </div>
+          )}
+
+          {/* Recommended action */}
+          {obj.recommended_action && (
+            <div className="wf07-ev-card action-card">
+              <div className="wf07-ev-card-title text-success">
+                <Target size={14} />
+                <span>Hành động đề xuất triển khai</span>
+              </div>
+              <p className="wf07-ev-card-text">{String(obj.recommended_action)}</p>
+            </div>
+          )}
+
+          {/* Other fields */}
+          {entries.filter(([k]) => !['rank', 'potential_score', 'description', 'recommended_action'].includes(k)).length > 0 && (
+            <div className="wf07-ev-other-grid">
+              {entries
+                .filter(([k]) => !['rank', 'potential_score', 'description', 'recommended_action'].includes(k))
+                .map(([k, v]) => (
+                  <div key={k} className="wf07-ev-field-row">
+                    <span className="wf07-ev-field-label">{formatFieldKey(k)}:</span>
+                    <span className="wf07-ev-field-val">
+                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (Array.isArray(parsedEvidence)) {
+      return (
+        <ul style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+          {parsedEvidence.map((ev, i) => (
+            <li key={i} style={{ marginBottom: 6 }}>{String(ev)}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return <p style={{ fontSize: 13, lineHeight: 1.6 }}>{String(parsedEvidence)}</p>;
   };
 
   return (
@@ -232,9 +391,9 @@ export const WF07Page: React.FC = () => {
                 onChange={(e) => setPriorityFilter(e.target.value)}
               >
                 <option value="ALL">Mức độ: Tất cả</option>
-                <option value="HIGH">Ưu tiên cao (HIGH)</option>
-                <option value="MEDIUM">Trung bình (MEDIUM)</option>
-                <option value="LOW">Thấp (LOW)</option>
+                <option value="HIGH">Ưu tiên cao (Cao)</option>
+                <option value="MEDIUM">Ưu tiên trung bình</option>
+                <option value="LOW">Ưu tiên thấp</option>
               </select>
             </div>
           </div>
@@ -270,8 +429,6 @@ export const WF07Page: React.FC = () => {
                 ) : (
                   filteredOpportunities.map((item, idx) => {
                     const isCurrent = item.id === selectedOpp?.id;
-                    const isHigh =
-                      item.priority.toLowerCase().includes('cao') || item.priority.toUpperCase() === 'HIGH';
                     return (
                       <tr
                         key={item.id}
@@ -287,9 +444,9 @@ export const WF07Page: React.FC = () => {
                         </td>
                         <td>
                           <span
-                            className={`badge-level ${isHigh ? 'cao' : 'trung bình'}`}
+                            className={`badge-level ${getPriorityClass(item.priority)}`}
                           >
-                            {item.priority}
+                            {formatPriority(item.priority)}
                           </span>
                         </td>
                         <td className="font-bold">
@@ -298,17 +455,14 @@ export const WF07Page: React.FC = () => {
                           </span>
                         </td>
                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : '—'}
+                          {formatDate(item.createdAt)}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <button
                             type="button"
                             className="action-icon-btn view"
-                            title="Xem chi tiết"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOppId(item.id);
-                            }}
+                            title="Xem chi tiết đầy đủ trong hộp thoại"
+                            onClick={(e) => handleOpenModalFor(item.id, e)}
                           >
                             <Eye size={14} />
                           </button>
@@ -335,34 +489,46 @@ export const WF07Page: React.FC = () => {
               <Lightbulb size={18} className="text-primary" />
               <span>Chi tiết cơ hội nội dung</span>
             </div>
-            {filteredOpportunities.length > 1 && (
-              <div className="detail-nav-arrows">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {selectedOpp && (
                 <button
                   type="button"
-                  className="detail-arrow-btn"
-                  onClick={() => {
-                    const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id);
-                    if (i > 0) setSelectedOppId(filteredOpportunities[i - 1].id);
-                  }}
-                  title="Cơ hội trước"
+                  className="action-icon-btn view"
+                  title="Mở hộp thoại xem chi tiết đầy đủ"
+                  onClick={() => setIsModalOpen(true)}
                 >
-                  &lt;
+                  <Eye size={14} />
                 </button>
-                <button
-                  type="button"
-                  className="detail-arrow-btn"
-                  onClick={() => {
-                    const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id);
-                    if (i >= 0 && i < filteredOpportunities.length - 1) {
-                      setSelectedOppId(filteredOpportunities[i + 1].id);
-                    }
-                  }}
-                  title="Cơ hội tiếp theo"
-                >
-                  &gt;
-                </button>
-              </div>
-            )}
+              )}
+              {filteredOpportunities.length > 1 && (
+                <div className="detail-nav-arrows">
+                  <button
+                    type="button"
+                    className="detail-arrow-btn"
+                    onClick={() => {
+                      const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id);
+                      if (i > 0) setSelectedOppId(filteredOpportunities[i - 1].id);
+                    }}
+                    title="Cơ hội trước"
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    type="button"
+                    className="detail-arrow-btn"
+                    onClick={() => {
+                      const i = filteredOpportunities.findIndex((o) => o.id === selectedOpp?.id);
+                      if (i >= 0 && i < filteredOpportunities.length - 1) {
+                        setSelectedOppId(filteredOpportunities[i + 1].id);
+                      }
+                    }}
+                    title="Cơ hội tiếp theo"
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {selectedOpp ? (
@@ -375,8 +541,8 @@ export const WF07Page: React.FC = () => {
                   <span className="platform-pill-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <YoutubeIcon size={13} className="yt-icon" /> YouTube
                   </span>
-                  <span className="badge-opp-high" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <Flame size={12} /> Ưu tiên: {selectedOpp.priority}
+                  <span className={`badge-opp-${getPriorityClass(selectedOpp.priority)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Flame size={12} /> Ưu tiên: {formatPriority(selectedOpp.priority)}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
                     Điểm: {selectedOpp.score}/100
@@ -414,18 +580,10 @@ export const WF07Page: React.FC = () => {
 
                 {activeTab === 'evidence' && (
                   <div className="opp-box" style={{ padding: 14, background: '#f8fafc', borderRadius: 8 }}>
-                    <h5 className="opp-box-header" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                      <ShieldCheck size={14} className="text-primary" /> Bằng chứng trích xuất từ dữ liệu:
+                    <h5 className="opp-box-header" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <ShieldCheck size={15} className="text-primary" /> Bằng chứng trích xuất từ dữ liệu:
                     </h5>
-                    {getEvidenceList(selectedOpp.evidence).length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chưa có dữ liệu bằng chứng kèm theo.</p>
-                    ) : (
-                      <ul style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
-                        {getEvidenceList(selectedOpp.evidence).map((ev, i) => (
-                          <li key={i} style={{ marginBottom: 6 }}>{ev}</li>
-                        ))}
-                      </ul>
-                    )}
+                    {renderEvidenceContent(selectedOpp.evidence)}
                   </div>
                 )}
               </div>
@@ -521,6 +679,116 @@ export const WF07Page: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* FULL COMPREHENSIVE DETAIL MODAL */}
+      {isModalOpen && selectedOpp && (
+        <div className="opp-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="opp-modal-card" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="opp-modal-header">
+              <div className="opp-modal-header-left">
+                <div className="kpi-icon-wrap purple" style={{ width: 36, height: 36 }}>
+                  <Lightbulb size={18} />
+                </div>
+                <div>
+                  <h3 className="opp-modal-title">Chi tiết cơ hội nội dung</h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mã định danh: #{selectedOpp.id}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="opp-modal-close-btn"
+                onClick={() => setIsModalOpen(false)}
+                title="Đóng"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="opp-modal-body">
+              {/* Stat Bar */}
+              <div className="opp-modal-stat-bar">
+                <div className="opp-modal-stat-item">
+                  <span className="opp-modal-stat-label">Điểm tiềm năng</span>
+                  <span className="opp-modal-stat-val" style={{ color: Number(selectedOpp.score) >= 70 ? '#16A34A' : '#2563EB' }}>
+                    {selectedOpp.score}/100
+                  </span>
+                </div>
+                <div className="opp-modal-stat-item">
+                  <span className="opp-modal-stat-label">Mức ưu tiên</span>
+                  <span className={`badge-level ${getPriorityClass(selectedOpp.priority)}`} style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+                    {formatPriority(selectedOpp.priority)}
+                  </span>
+                </div>
+                <div className="opp-modal-stat-item">
+                  <span className="opp-modal-stat-label">Ngày phát hiện</span>
+                  <span className="opp-modal-stat-val">{formatDate(selectedOpp.createdAt)}</span>
+                </div>
+                <div className="opp-modal-stat-item">
+                  <span className="opp-modal-stat-label">Nền tảng phân tích</span>
+                  <span className="opp-modal-stat-val" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#DC2626' }}>
+                    <YoutubeIcon size={14} /> YouTube
+                  </span>
+                </div>
+              </div>
+
+              {/* Title Section */}
+              <div className="opp-modal-section">
+                <div className="opp-modal-section-title">
+                  <Lightbulb size={15} className="text-primary" />
+                  <span>Chủ đề / Ý tưởng nội dung đề xuất</span>
+                </div>
+                <div className="opp-modal-section-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)' }}>{selectedOpp.title}</span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => copyTitle(selectedOpp.title)}
+                    style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0 }}
+                    title="Sao chép tiêu đề"
+                  >
+                    <Copy size={13} /> Sao chép
+                  </button>
+                </div>
+              </div>
+
+              {/* Analysis Reason Section */}
+              <div className="opp-modal-section">
+                <div className="opp-modal-section-title">
+                  <Check size={15} className="text-success" />
+                  <span>Tại sao đây là cơ hội tiềm năng? (Lý do phân tích)</span>
+                </div>
+                <div className="opp-modal-section-content">
+                  <p style={{ margin: 0, lineHeight: 1.6 }}>{selectedOpp.reason || 'Chưa có thông tin lý do phân tích.'}</p>
+                </div>
+              </div>
+
+              {/* Evidence Section */}
+              <div className="opp-modal-section">
+                <div className="opp-modal-section-title">
+                  <ShieldCheck size={15} className="text-primary" />
+                  <span>Bằng chứng trích xuất từ dữ liệu</span>
+                </div>
+                <div className="opp-modal-section-content" style={{ background: '#FFFFFF' }}>
+                  {renderEvidenceContent(selectedOpp.evidence)}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="opp-modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

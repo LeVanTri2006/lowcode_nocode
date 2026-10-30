@@ -121,11 +121,20 @@
 .badge-level.cao {
   background-color: #FEF2F2;
   color: #EF4444;
+  border: 1px solid #FECACA;
 }
 
+.badge-level.trung-bình,
 .badge-level.trung\ bình {
   background-color: #FFFBEB;
-  color: #F59E0B;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.badge-level.thấp {
+  background-color: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #BFDBFE;
 }
 
 .detail-nav-arrows {
@@ -216,6 +225,7 @@
   color: #DC2626;
 }
 
+.badge-opp-cao,
 .badge-opp-high {
   display: inline-flex;
   align-items: center;
@@ -225,6 +235,34 @@
   border: 1px solid #FECACA;
   background-color: #FEF2F2;
   color: #DC2626;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-opp-trung-bình,
+.badge-opp-medium {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid #FDE68A;
+  background-color: #FFFBEB;
+  color: #D97706;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-opp-thấp,
+.badge-opp-low {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid #BFDBFE;
+  background-color: #EFF6FF;
+  color: #2563EB;
   font-size: 11px;
   font-weight: 700;
 }
@@ -359,5 +397,267 @@
   .wf07-middle-grid,
   .wf07-bottom-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* WF07 DETAIL MODAL */
+.opp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.opp-modal-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 780px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-light, #E2E8F0);
+  animation: scaleUp 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.opp-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-light, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #FAFAFA;
+}
+
+.opp-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.opp-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main, #0F172A);
+}
+
+.opp-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748B);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.opp-modal-close-btn:hover {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+
+.opp-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.opp-modal-stat-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: #F8FAFC;
+  border: 1px solid var(--border-light, #E2E8F0);
+  border-radius: 8px;
+}
+
+.opp-modal-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.opp-modal-stat-label {
+  font-size: 11px;
+  color: var(--text-muted, #64748B);
+  font-weight: 600;
+}
+
+.opp-modal-stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main, #0F172A);
+}
+
+.opp-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opp-modal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main, #0F172A);
+}
+
+.opp-modal-section-content {
+  padding: 14px;
+  background-color: #F8FAFC;
+  border: 1px solid var(--border-light, #E2E8F0);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main, #0F172A);
+}
+
+.opp-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-light, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background-color: #FAFAFA;
+}
+
+/* EVIDENCE FORMATTED STYLES */
+.wf07-evidence-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wf07-evidence-metric-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wf07-ev-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.wf07-ev-pill.blue {
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
+}
+
+.wf07-ev-pill.green {
+  background-color: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #047857;
+}
+
+.ev-pill-label {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.ev-pill-value {
+  font-weight: 700;
+}
+
+.wf07-ev-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wf07-ev-card.desc-card {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.wf07-ev-card.action-card {
+  background-color: #F0FDF4;
+  border: 1px solid #BBF7D0;
+}
+
+.wf07-ev-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main, #0F172A);
+}
+
+.wf07-ev-card-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main, #1E293B);
+}
+
+.wf07-ev-other-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.wf07-ev-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.wf07-ev-field-label {
+  font-weight: 600;
+  color: #64748B;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.wf07-ev-field-val {
+  color: #0F172A;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .opp-modal-stat-bar {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
