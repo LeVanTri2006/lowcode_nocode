@@ -60,3 +60,13 @@ export interface RiskItem {
   evidence: any;
   createdAt: string;
 }
+
+export interface SystemNotification {
+  id: string;
+  type: 'alert' | 'opportunity' | 'risk' | 'report' | 'trend' | 'content';
+  title: string;
+  desc: string;
+  timestamp: string;
+  link: string;
+  severity: 'high' | 'medium' | 'low' | 'info';
+}

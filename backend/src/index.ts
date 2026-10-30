@@ -20,6 +20,7 @@ import opportunityRoutes from './routes/opportunities';
 import riskRoutes from './routes/risks';
 import strategyRoutes from './routes/strategies';
 import reportRoutes from './routes/reports';
+import notificationRoutes from './routes/notifications';
 
 dotenv.config();
 
@@ -65,7 +66,8 @@ app.get('/', (_req, res) => {
       { path: '/api/opportunities', description: 'Cơ hội' },
       { path: '/api/risks', description: 'Rủi ro' },
       { path: '/api/strategies', description: 'Chiến lược' },
-      { path: '/api/reports', description: 'Báo cáo' }
+      { path: '/api/reports', description: 'Báo cáo' },
+      { path: '/api/notifications', description: 'Thông báo hệ thống' }
     ]
   });
 });
@@ -86,6 +88,7 @@ app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/risks', riskRoutes);
 app.use('/api/strategies', strategyRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
